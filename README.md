@@ -2,7 +2,7 @@
 
 A tiny mobile-first fiber lookup tool for field work.
 
-Choose the color code and enter the fiber number. Color codes with fewer than 12 defined colors automatically lock the tube size to the number of colors in that code. Telenor, OPGW / TIA-598 and Skanove S12 keep manual tube-size selection. The app immediately shows:
+Choose the color code and enter the fiber number. Color systems that use the common 12-color base set allow any tube size from 1 to 24. The sequence always restarts at color 1 for every tube, so a 4-fiber tube uses only colors 1–4 before the next tube starts again at color 1. Codes with their own 6F, 8F, 12F-special or 16F sequences are automatically locked to their defined tube size. The app immediately shows:
 
 - Tube number
 - Fiber color
@@ -11,7 +11,7 @@ Choose the color code and enter the fiber number. Color codes with fewer than 12
 
 The color-code sequences are transcribed from the supplied `fiber farge koder.xlsx` workbook.
 
-For 24-fiber tubes, Telenor, OPGW / TIA-598 and Skanove S12 repeat positions 1–12 for positions 13–24 and mark the second set with three black stripes (`///`). If the repeated color is Black, the second-range fiber is displayed as blank/white with `///` so the identification stripes remain visible.
+For common 12-color systems, tube positions 13–24 repeat positions 1–12 and mark the repeated colors with three black stripes (`///`). This applies whenever a selected tube size is above 12, not only at 24 fibers. If the repeated base color is Black, that repeated fiber is displayed as blank/white with `///` so the identification stripes remain visible.
 
 ## GitHub Pages
 
