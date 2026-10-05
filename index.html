@@ -69,13 +69,28 @@
     }
 
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .field-hint { color: var(--muted); font-size: 11px; font-weight: 500; line-height: 1.3; }
+
+    .results {
+      display: grid;
+      gap: 12px;
+      margin-top: 14px;
+    }
 
     .result {
-      margin-top: 14px;
       padding: 18px;
       border-radius: 18px;
       border: 1px solid var(--line);
       background: var(--panel-2);
+    }
+
+    .result-heading {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: .1em;
+      text-transform: uppercase;
     }
 
     .result-grid { display: grid; grid-template-columns: .8fr 1.2fr; gap: 12px; }
@@ -224,35 +239,25 @@
 
         <label>
           Fiber number
-          <input id="fiberNumber" type="number" inputmode="numeric" min="1" step="1" value="55" autofocus />
+          <input
+            id="fiberNumber"
+            type="text"
+            inputmode="text"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+            enterkeyhint="done"
+            value="55"
+            placeholder="55 or 13+14"
+            aria-describedby="fiberNumberHint"
+            autofocus
+          />
+          <span id="fiberNumberHint" class="field-hint">Use + for multiple fibers, e.g. 13+14</span>
         </label>
       </div>
     </section>
 
-    <section id="result" class="result" aria-live="polite">
-      <div class="result-grid">
-        <div class="metric">
-          <div class="metric-label">Tube</div>
-          <div id="tubeNumber" class="tube-number">7</div>
-        </div>
-
-        <div id="colorMetric" class="metric color-metric light-text">
-          <div class="metric-label">Fiber color</div>
-          <div id="fiberColor" class="fiber-name">RED</div>
-        </div>
-      </div>
-
-      <div class="details">
-        <div class="detail">
-          <span>Position in tube</span>
-          <strong id="fiberPosition">7 / 8</strong>
-        </div>
-        <div class="detail">
-          <span>Tube range</span>
-          <strong id="tubeRange">49–56</strong>
-        </div>
-      </div>
-    </section>
+    <section id="results" class="results" aria-live="polite"></section>
 
     <div id="error" class="error"></div>
     <p class="hint">Color codes transcribed from the supplied fiber color-code sheet.</p>
@@ -307,12 +312,7 @@
     const colorCode = document.getElementById("colorCode");
     const fibersPerTube = document.getElementById("fibersPerTube");
     const fiberNumber = document.getElementById("fiberNumber");
-    const tubeNumber = document.getElementById("tubeNumber");
-    const fiberColor = document.getElementById("fiberColor");
-    const fiberPosition = document.getElementById("fiberPosition");
-    const tubeRange = document.getElementById("tubeRange");
-    const colorMetric = document.getElementById("colorMetric");
-    const result = document.getElementById("result");
+    const results = document.getElementById("results");
     const error = document.getElementById("error");
 
     for (const name of Object.keys(colorCodes)) {
@@ -366,23 +366,26 @@
       fibersPerTube.title = `${codeName} uses a fixed ${sequence.length}-fiber tube size.`;
     }
 
-    function calculate() {
-      const codeName = colorCode.value;
-      const sequence = colorCodes[codeName];
-      const perTube = Number.parseInt(fibersPerTube.value, 10);
-      const fiber = Number.parseInt(fiberNumber.value, 10);
+    function parseFiberNumbers(value) {
+      const raw = value.trim();
+      if (!raw) return { error: "Enter a fiber number." };
 
-      if (!allowedTubeSizes.has(perTube)) return showError("Choose 1, 2, 4, 6, 8, 12, 16 or 24 fibers per tube.");
-      if (!Number.isInteger(fiber) || fiber < 1) return showError("Fiber number must be 1 or more.");
-
-      const usesStandard12Rules = standard12ColorCodes.has(codeName);
-      if (!usesStandard12Rules && perTube !== sequence.length) {
-        return showError(`${codeName} uses a fixed tube size of ${sequence.length} fibers.`);
+      if (!/^\d+(?:\s*\+\s*\d+)*$/.test(raw)) {
+        return { error: "Use fiber numbers separated by +, for example 13+14." };
       }
 
-      error.style.display = "none";
-      result.style.display = "block";
+      const fibers = raw
+        .split("+")
+        .map(part => Number.parseInt(part.trim(), 10));
 
+      if (fibers.some(fiber => !Number.isInteger(fiber) || fiber < 1)) {
+        return { error: "Fiber numbers must be 1 or more." };
+      }
+
+      return { fibers };
+    }
+
+    function buildFiberResult(fiber, sequence, perTube, usesStandard12Rules) {
       const tube = Math.floor((fiber - 1) / perTube) + 1;
       const position = ((fiber - 1) % perTube) + 1;
       const striped = usesStandard12Rules && position > 12;
@@ -394,31 +397,104 @@
       const displayColor = blankStripedBlack ? C.White : color;
       const first = ((tube - 1) * perTube) + 1;
       const last = tube * perTube;
-
-      tubeNumber.textContent = tube;
-      fiberColor.textContent = blankStripedBlack
+      const displayName = blankStripedBlack
         ? "BLANK ///"
         : striped
           ? `${color.name.toUpperCase()} ///`
           : color.name.toUpperCase();
-      fiberPosition.textContent = `${position} / ${perTube}`;
-      tubeRange.textContent = `${first}–${last}`;
 
-      colorMetric.style.setProperty("--fiber-color", displayColor.css);
-      colorMetric.classList.toggle("dark-text", displayColor.dark);
-      colorMetric.classList.toggle("light-text", !displayColor.dark);
-      colorMetric.classList.toggle("clear", Boolean(displayColor.clear));
-      colorMetric.classList.toggle("striped", striped);
+      return {
+        fiber,
+        tube,
+        position,
+        first,
+        last,
+        striped,
+        displayColor,
+        displayName
+      };
+    }
+
+    function renderFiberResult(item, perTube) {
+      const article = document.createElement("article");
+      article.className = "result";
+
+      const heading = document.createElement("div");
+      heading.className = "result-heading";
+      heading.textContent = `Fiber ${item.fiber}`;
+
+      const grid = document.createElement("div");
+      grid.className = "result-grid";
+
+      const tubeMetric = document.createElement("div");
+      tubeMetric.className = "metric";
+      tubeMetric.innerHTML = `
+        <div class="metric-label">Tube</div>
+        <div class="tube-number">${item.tube}</div>
+      `;
+
+      const colorMetric = document.createElement("div");
+      colorMetric.className = `metric color-metric ${item.displayColor.dark ? "dark-text" : "light-text"}`;
+      if (item.displayColor.clear) colorMetric.classList.add("clear");
+      if (item.striped) colorMetric.classList.add("striped");
+      colorMetric.style.setProperty("--fiber-color", item.displayColor.css);
+      colorMetric.innerHTML = `
+        <div class="metric-label">Fiber color</div>
+        <div class="fiber-name">${item.displayName}</div>
+      `;
+
+      grid.append(tubeMetric, colorMetric);
+
+      const details = document.createElement("div");
+      details.className = "details";
+      details.innerHTML = `
+        <div class="detail">
+          <span>Position in tube</span>
+          <strong>${item.position} / ${perTube}</strong>
+        </div>
+        <div class="detail">
+          <span>Tube range</span>
+          <strong>${item.first}–${item.last}</strong>
+        </div>
+      `;
+
+      article.append(heading, grid, details);
+      return article;
+    }
+
+    function calculate() {
+      const codeName = colorCode.value;
+      const sequence = colorCodes[codeName];
+      const perTube = Number.parseInt(fibersPerTube.value, 10);
+      const parsed = parseFiberNumbers(fiberNumber.value);
+
+      if (!allowedTubeSizes.has(perTube)) return showError("Choose 1, 2, 4, 6, 8, 12, 16 or 24 fibers per tube.");
+      if (parsed.error) return showError(parsed.error);
+
+      const usesStandard12Rules = standard12ColorCodes.has(codeName);
+      if (!usesStandard12Rules && perTube !== sequence.length) {
+        return showError(`${codeName} uses a fixed tube size of ${sequence.length} fibers.`);
+      }
+
+      error.style.display = "none";
+      results.style.display = "grid";
+      results.replaceChildren();
+
+      for (const fiber of parsed.fibers) {
+        const item = buildFiberResult(fiber, sequence, perTube, usesStandard12Rules);
+        results.appendChild(renderFiberResult(item, perTube));
+      }
 
       localStorage.setItem("fiberFinder", JSON.stringify({
         colorCode: codeName,
         fibersPerTube: perTube,
-        fiberNumber: fiber
+        fiberNumber: fiberNumber.value.trim()
       }));
     }
 
     function showError(message) {
-      result.style.display = "none";
+      results.style.display = "none";
+      results.replaceChildren();
       error.textContent = message;
       error.style.display = "block";
     }
