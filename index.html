@@ -219,15 +219,7 @@
       <div class="row">
         <label>
           Fibers per tube
-          <select id="fibersPerTube">
-            <option value="1">1</option>
-            <option value="2">2</option>
-            <option value="4">4</option>
-            <option value="6">6</option>
-            <option value="8" selected>8</option>
-            <option value="12">12</option>
-            <option value="24">24</option>
-          </select>
+          <select id="fibersPerTube"></select>
         </label>
 
         <label>
@@ -330,29 +322,47 @@
       colorCode.appendChild(option);
     }
 
+    const standard12ColorCodes = new Set([
+      "Telenor",
+      "OPGW / TIA-598",
+      "Skanove S12",
+      "Nittedal",
+      "Gammel Telenor",
+      "PRIORITY / IP-ONLY",
+      "PRIORITY GAMMEL",
+      "Østfold Fibernett",
+      "BBS 12F"
+    ]);
+
+    const allowedTubeSizes = new Set(Array.from({ length: 24 }, (_, i) => i + 1));
+
+    for (let size = 1; size <= 24; size += 1) {
+      const option = document.createElement("option");
+      option.value = String(size);
+      option.textContent = String(size);
+      fibersPerTube.appendChild(option);
+    }
+
     const saved = JSON.parse(localStorage.getItem("fiberFinder") || "{}");
     colorCode.value = saved.colorCode && colorCodes[saved.colorCode] ? saved.colorCode : "OPGW / TIA-598";
-    const allowedTubeSizes = new Set([1, 2, 4, 6, 8, 12, 24]);
-    const manualTubeSizeCodes = new Set(["Telenor", "OPGW / TIA-598", "Skanove S12"]);
     const savedTubeSize = Number.parseInt(saved.fibersPerTube, 10);
-    fibersPerTube.value = allowedTubeSizes.has(savedTubeSize) ? savedTubeSize : 8;
+    fibersPerTube.value = allowedTubeSizes.has(savedTubeSize) ? String(savedTubeSize) : "12";
     fiberNumber.value = saved.fiberNumber || 55;
 
     function syncTubeSizeToColorCode() {
       const codeName = colorCode.value;
       const sequence = colorCodes[codeName];
-      const autoTubeSize = !manualTubeSizeCodes.has(codeName)
-        && sequence.length < 12
-        && allowedTubeSizes.has(sequence.length);
+      const usesStandard12Rules = standard12ColorCodes.has(codeName);
 
-      if (autoTubeSize) {
-        fibersPerTube.value = String(sequence.length);
-        fibersPerTube.disabled = true;
-        fibersPerTube.title = `${codeName} uses a fixed ${sequence.length}-fiber tube size.`;
-      } else {
+      if (usesStandard12Rules) {
         fibersPerTube.disabled = false;
-        fibersPerTube.title = "";
+        fibersPerTube.title = "Choose any tube size from 1 to 24.";
+        return;
       }
+
+      fibersPerTube.value = String(sequence.length);
+      fibersPerTube.disabled = true;
+      fibersPerTube.title = `${codeName} uses a fixed ${sequence.length}-fiber tube size.`;
     }
 
     function calculate() {
@@ -361,17 +371,12 @@
       const perTube = Number.parseInt(fibersPerTube.value, 10);
       const fiber = Number.parseInt(fiberNumber.value, 10);
 
-      if (!allowedTubeSizes.has(perTube)) return showError("Choose 1, 2, 4, 6, 8, 12 or 24 fibers per tube.");
+      if (!allowedTubeSizes.has(perTube)) return showError("Choose a tube size from 1 to 24 fibers.");
       if (!Number.isInteger(fiber) || fiber < 1) return showError("Fiber number must be 1 or more.");
 
-      const supportsStriped24 = codeName === "Telenor"
-        || codeName === "OPGW / TIA-598"
-        || codeName === "Skanove S12";
-      if (perTube === 24 && !supportsStriped24) {
-        return showError(`24 fibers per tube with /// identification is currently defined only for Telenor, OPGW and S12.`);
-      }
-      if (perTube !== 24 && perTube > sequence.length) {
-        return showError(`${codeName} has ${sequence.length} defined fiber colors in the supplied sheet. Choose a smaller tube size.`);
+      const usesStandard12Rules = standard12ColorCodes.has(codeName);
+      if (!usesStandard12Rules && perTube !== sequence.length) {
+        return showError(`${codeName} uses a fixed tube size of ${sequence.length} fibers.`);
       }
 
       error.style.display = "none";
@@ -379,8 +384,10 @@
 
       const tube = Math.floor((fiber - 1) / perTube) + 1;
       const position = ((fiber - 1) % perTube) + 1;
-      const striped = perTube === 24 && supportsStriped24 && position > 12;
-      const colorIndex = striped ? position - 13 : position - 1;
+      const striped = usesStandard12Rules && position > 12;
+      const colorIndex = usesStandard12Rules
+        ? (position - 1) % 12
+        : position - 1;
       const color = sequence[colorIndex];
       const blankStripedBlack = striped && color.name === "Black";
       const displayColor = blankStripedBlack ? C.White : color;
