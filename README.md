@@ -9,6 +9,8 @@ Choose the color code and enter the fiber number. Color systems that use the com
 - Position inside the tube
 - Fiber range for that tube
 
+Use `+` between fiber numbers to look up several fibers at once. For example, `13+14` shows separate results for fiber 13 and fiber 14. Results are stacked vertically for a mobile-friendly layout.
+
 The color-code sequences are transcribed from the supplied `fiber farge koder.xlsx` workbook.
 
 For common 12-color systems, tube positions 13–24 repeat positions 1–12 and mark the repeated colors with three black stripes (`///`). This applies whenever a selected tube size is above 12, not only at 24 fibers. If the repeated base color is Black, that repeated fiber is displayed as blank/white with `///` so the identification stripes remain visible.
