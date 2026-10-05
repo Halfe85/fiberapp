@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b1220" />
+  <title>Fiber Finder</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #07101d;
+      --panel: #0d1828;
+      --panel-2: #111f33;
+      --line: #26364d;
+      --text: #f5f7fb;
+      --muted: #9fb0c8;
+      --accent: #65c7ff;
+      --danger: #ff7d7d;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      min-height: 100dvh;
+      padding: max(16px, env(safe-area-inset-top)) 14px max(24px, env(safe-area-inset-bottom));
+    }
+
+    main { width: min(100%, 520px); margin: 0 auto; }
+
+    header { margin: 4px 2px 18px; }
+    h1 { margin: 0; font-size: clamp(30px, 9vw, 42px); line-height: 1; letter-spacing: -0.04em; }
+    .subtitle { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
+
+    .card {
+      background: linear-gradient(180deg, var(--panel), #0a1523);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 16px;
+      box-shadow: 0 14px 36px rgba(0,0,0,.22);
+    }
+
+    .form { display: grid; gap: 14px; }
+    label { display: grid; gap: 7px; font-size: 13px; font-weight: 700; color: #cdd8e8; }
+
+    select, input {
+      width: 100%;
+      min-height: 52px;
+      border: 1px solid #334761;
+      border-radius: 12px;
+      background: #07111e;
+      color: var(--text);
+      font: inherit;
+      font-size: 18px;
+      padding: 0 14px;
+      outline: none;
+    }
+
+    select:focus, input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(101,199,255,.14);
+    }
+
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .result {
+      margin-top: 14px;
+      padding: 18px;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+    }
+
+    .result-grid { display: grid; grid-template-columns: .8fr 1.2fr; gap: 12px; }
+
+    .metric {
+      min-height: 122px;
+      border-radius: 14px;
+      border: 1px solid #31445d;
+      background: #091421;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .metric-label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .11em;
+      text-transform: uppercase;
+    }
+
+    .tube-number { margin-top: 2px; font-size: 56px; line-height: .95; font-weight: 900; letter-spacing: -.05em; }
+
+    .color-metric {
+      position: relative;
+      overflow: hidden;
+      isolation: isolate;
+    }
+
+    .color-metric::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: var(--fiber-color, transparent);
+      opacity: .92;
+      z-index: -2;
+    }
+
+    .color-metric.clear::before {
+      background:
+        linear-gradient(45deg, #d8e0ea 25%, transparent 25%),
+        linear-gradient(-45deg, #d8e0ea 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #d8e0ea 75%),
+        linear-gradient(-45deg, transparent 75%, #d8e0ea 75%),
+        #fff;
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+    }
+
+    .color-metric::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(0,0,0,.04), rgba(0,0,0,.22));
+      z-index: -1;
+    }
+
+    .fiber-name {
+      margin-top: 8px;
+      font-size: clamp(27px, 8vw, 38px);
+      line-height: 1;
+      font-weight: 950;
+      letter-spacing: -.035em;
+      word-break: break-word;
+    }
+
+    .dark-text { color: #07101d; text-shadow: 0 1px 0 rgba(255,255,255,.35); }
+    .light-text { color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.5); }
+
+    .details {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0,1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .detail {
+      background: #091421;
+      border: 1px solid #293c55;
+      border-radius: 12px;
+      padding: 10px 12px;
+    }
+
+    .detail span { display: block; color: var(--muted); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+    .detail strong { display: block; margin-top: 3px; font-size: 18px; }
+
+    .error {
+      display: none;
+      margin-top: 14px;
+      border: 1px solid rgba(255,125,125,.45);
+      background: rgba(255,125,125,.08);
+      color: #ffc0c0;
+      border-radius: 12px;
+      padding: 12px;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    .hint { margin: 12px 2px 0; color: var(--muted); font-size: 12px; text-align: center; }
+
+    @media (max-width: 390px) {
+      .row { grid-template-columns: 1fr; }
+      .result-grid { grid-template-columns: 1fr 1.25fr; }
+      .tube-number { font-size: 48px; }
+      .card, .result { padding: 14px; border-radius: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Fiber Finder</h1>
+      <p class="subtitle">Find the tube and fiber color instantly.</p>
+    </header>
+
+    <section class="card form" aria-label="Fiber lookup">
+      <label>
+        Color code
+        <select id="colorCode"></select>
+      </label>
+
+      <div class="row">
+        <label>
+          Fibers per tube
+          <input id="fibersPerTube" type="number" inputmode="numeric" min="1" max="99" step="1" value="8" />
+        </label>
+
+        <label>
+          Fiber number
+          <input id="fiberNumber" type="number" inputmode="numeric" min="1" step="1" value="55" autofocus />
+        </label>
+      </div>
+    </section>
+
+    <section id="result" class="result" aria-live="polite">
+      <div class="result-grid">
+        <div class="metric">
+          <div class="metric-label">Tube</div>
+          <div id="tubeNumber" class="tube-number">7</div>
+        </div>
+
+        <div id="colorMetric" class="metric color-metric light-text">
+          <div class="metric-label">Fiber color</div>
+          <div id="fiberColor" class="fiber-name">RED</div>
+        </div>
+      </div>
+
+      <div class="details">
+        <div class="detail">
+          <span>Position in tube</span>
+          <strong id="fiberPosition">7 / 8</strong>
+        </div>
+        <div class="detail">
+          <span>Tube range</span>
+          <strong id="tubeRange">49–56</strong>
+        </div>
+      </div>
+    </section>
+
+    <div id="error" class="error"></div>
+    <p class="hint">Color codes transcribed from the supplied fiber color-code sheet.</p>
+  </main>
+
+  <script>
+    const C = {
+      White:     { name: "White",     css: "#ffffff", dark: true },
+      Red:       { name: "Red",       css: "#ff1f1f", dark: false },
+      Yellow:    { name: "Yellow",    css: "#ffe316", dark: true },
+      Green:     { name: "Green",     css: "#00b85a", dark: true },
+      Blue:      { name: "Blue",      css: "#1187d1", dark: false },
+      Gray:      { name: "Gray",      css: "#a5a5a5", dark: true },
+      Brown:     { name: "Brown",     css: "#8a431c", dark: false },
+      Black:     { name: "Black",     css: "#080a0d", dark: false },
+      Violet:    { name: "Violet",    css: "#7030a0", dark: false },
+      Turquoise: { name: "Turquoise", css: "#61b7e9", dark: true },
+      Orange:    { name: "Orange",    css: "#ffc000", dark: true },
+      Pink:      { name: "Pink",      css: "#ff49c8", dark: true },
+      Clear:     { name: "Clear",     css: "transparent", dark: true, clear: true },
+      LightBlue: { name: "Light Blue", css: "#d6e8f7", dark: true },
+      LightOrange:{ name: "Light Orange", css: "#f8cbad", dark: true },
+      LightGreen:{ name: "Light Green", css: "#c6e0b4", dark: true }
+    };
+
+    // Order follows the supplied Excel color-code sheet.
+    const colorCodes = {
+      "Telenor": [C.White,C.Red,C.Yellow,C.Green,C.Blue,C.Gray,C.Brown,C.Black,C.Violet,C.Turquoise,C.Orange,C.Pink],
+      "OPGW / TIA-598": [C.Blue,C.Orange,C.Green,C.Brown,C.Gray,C.White,C.Red,C.Black,C.Yellow,C.Violet,C.Pink,C.Turquoise],
+      "Skanove S12": [C.Red,C.Blue,C.White,C.Green,C.Yellow,C.Gray,C.Brown,C.Black,C.Violet,C.Orange,C.Turquoise,C.Pink],
+      "Nittedal": [C.Red,C.Green,C.Blue,C.Yellow,C.White,C.Gray,C.Brown,C.Violet,C.Black,C.Turquoise,C.Orange,C.Pink],
+      "Gammel Telenor": [C.Black,C.Brown,C.Red,C.Orange,C.Yellow,C.Green,C.Blue,C.Violet,C.Gray,C.White,C.Pink,C.Turquoise],
+      "Gammel Telenor 8": [C.White,C.Brown,C.Red,C.Orange,C.Yellow,C.Green,C.Blue,C.Violet],
+      "Nettpartner G12": [C.Black,C.White,C.Green,C.Red,C.Brown,C.Blue,C.Orange,C.Yellow,C.Violet,C.Gray,C.Pink,C.Clear],
+      "Nettpartner G8": [C.Black,C.Brown,C.Red,C.Orange,C.Yellow,C.Green,C.Blue,C.Violet],
+      "Nettpartner Draka G8": [C.Blue,C.Yellow,C.Red,C.White,C.Green,C.Violet,C.Orange,C.Gray],
+      "Nettpartner QXAI 8": [C.Red,C.Green,C.Blue,C.Yellow,C.White,C.Gray,C.Brown,C.Violet],
+      "PRIORITY / IP-ONLY": [C.Red,C.Green,C.Blue,C.Yellow,C.White,C.Gray,C.Brown,C.Violet,C.Turquoise,C.Black,C.Orange,C.Pink],
+      "PRIORITY GAMMEL": [C.Red,C.Green,C.Yellow,C.Blue,C.White,C.Violet,C.Orange,C.Black,C.Gray,C.Brown,C.Pink,C.Turquoise],
+      "PT8": [C.Red,C.Green,C.Blue,C.Yellow,C.White,C.Gray,C.Brown,C.Black],
+      "Østfold Fibernett": [C.Red,C.Blue,C.White,C.Green,C.Yellow,C.Gray,C.Orange,C.Brown,C.Violet,C.Black,C.Pink,C.Turquoise],
+      "Sogn Network": [C.Red,C.Blue,C.White,C.Green,C.Yellow,C.Gray,C.Brown,C.Black],
+      "BLÅ BBS": [C.Red,C.White,C.Yellow,C.White,C.Yellow,C.White,C.Yellow,C.White,C.Yellow,C.White,C.Yellow,C.Blue],
+      "BBS 12F": [C.Red,C.White,C.Yellow,C.Blue,C.Green,C.Violet,C.Brown,C.Black,C.Orange,C.Turquoise,C.Pink,C.Gray],
+      "BBS 8F": [C.Red,C.White,C.Yellow,C.Blue,C.Green,C.Violet,C.Brown,C.Black],
+      "BBS 6F": [C.Blue,C.Orange,C.Green,C.Brown,C.Gray,C.Red],
+      "OPGW 16F — V1": [C.Blue,C.Orange,C.Green,C.Brown,C.Gray,C.White,C.Red,C.Black,C.Yellow,C.Violet,C.Pink,C.Turquoise,C.Clear,C.Turquoise,C.Yellow,C.Violet],
+      "OPGW 16F — V2": [C.Blue,C.Orange,C.Green,C.Brown,C.Gray,C.White,C.Red,C.Black,C.Yellow,C.Violet,C.Pink,C.Turquoise,C.Yellow,C.Clear,C.Green,C.Violet],
+      "OPGW 16F — V3": [C.Blue,C.Orange,C.Green,C.Brown,C.Gray,C.White,C.Red,C.Black,C.Yellow,C.Violet,C.Pink,C.Turquoise,C.LightBlue,C.LightOrange,C.LightGreen,C.LightOrange]
+    };
+
+    const colorCode = document.getElementById("colorCode");
+    const fibersPerTube = document.getElementById("fibersPerTube");
+    const fiberNumber = document.getElementById("fiberNumber");
+    const tubeNumber = document.getElementById("tubeNumber");
+    const fiberColor = document.getElementById("fiberColor");
+    const fiberPosition = document.getElementById("fiberPosition");
+    const tubeRange = document.getElementById("tubeRange");
+    const colorMetric = document.getElementById("colorMetric");
+    const result = document.getElementById("result");
+    const error = document.getElementById("error");
+
+    for (const name of Object.keys(colorCodes)) {
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
+      colorCode.appendChild(option);
+    }
+
+    const saved = JSON.parse(localStorage.getItem("fiberFinder") || "{}");
+    colorCode.value = saved.colorCode && colorCodes[saved.colorCode] ? saved.colorCode : "OPGW / TIA-598";
+    fibersPerTube.value = saved.fibersPerTube || 8;
+    fiberNumber.value = saved.fiberNumber || 55;
+
+    function calculate() {
+      const codeName = colorCode.value;
+      const sequence = colorCodes[codeName];
+      const perTube = Number.parseInt(fibersPerTube.value, 10);
+      const fiber = Number.parseInt(fiberNumber.value, 10);
+
+      if (!Number.isInteger(perTube) || perTube < 1) return showError("Fibers per tube must be 1 or more.");
+      if (!Number.isInteger(fiber) || fiber < 1) return showError("Fiber number must be 1 or more.");
+      if (perTube > sequence.length) {
+        return showError(`${codeName} has ${sequence.length} defined fiber colors in the supplied sheet. Choose ${sequence.length} or fewer fibers per tube.`);
+      }
+
+      error.style.display = "none";
+      result.style.display = "block";
+
+      const tube = Math.floor((fiber - 1) / perTube) + 1;
+      const position = ((fiber - 1) % perTube) + 1;
+      const color = sequence[position - 1];
+      const first = ((tube - 1) * perTube) + 1;
+      const last = tube * perTube;
+
+      tubeNumber.textContent = tube;
+      fiberColor.textContent = color.name.toUpperCase();
+      fiberPosition.textContent = `${position} / ${perTube}`;
+      tubeRange.textContent = `${first}–${last}`;
+
+      colorMetric.style.setProperty("--fiber-color", color.css);
+      colorMetric.classList.toggle("dark-text", color.dark);
+      colorMetric.classList.toggle("light-text", !color.dark);
+      colorMetric.classList.toggle("clear", Boolean(color.clear));
+
+      localStorage.setItem("fiberFinder", JSON.stringify({
+        colorCode: codeName,
+        fibersPerTube: perTube,
+        fiberNumber: fiber
+      }));
+    }
+
+    function showError(message) {
+      result.style.display = "none";
+      error.textContent = message;
+      error.style.display = "block";
+    }
+
+    [colorCode, fibersPerTube, fiberNumber].forEach(el => {
+      el.addEventListener("input", calculate);
+      el.addEventListener("change", calculate);
+    });
+
+    calculate();
+  </script>
+</body>
+</html>
