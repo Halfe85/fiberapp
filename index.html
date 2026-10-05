@@ -63,6 +63,11 @@
       box-shadow: 0 0 0 3px rgba(101,199,255,.14);
     }
 
+    select:disabled {
+      opacity: .72;
+      cursor: not-allowed;
+    }
+
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
     .result {
@@ -328,9 +333,27 @@
     const saved = JSON.parse(localStorage.getItem("fiberFinder") || "{}");
     colorCode.value = saved.colorCode && colorCodes[saved.colorCode] ? saved.colorCode : "OPGW / TIA-598";
     const allowedTubeSizes = new Set([1, 2, 4, 6, 8, 12, 24]);
+    const manualTubeSizeCodes = new Set(["Telenor", "OPGW / TIA-598", "Skanove S12"]);
     const savedTubeSize = Number.parseInt(saved.fibersPerTube, 10);
     fibersPerTube.value = allowedTubeSizes.has(savedTubeSize) ? savedTubeSize : 8;
     fiberNumber.value = saved.fiberNumber || 55;
+
+    function syncTubeSizeToColorCode() {
+      const codeName = colorCode.value;
+      const sequence = colorCodes[codeName];
+      const autoTubeSize = !manualTubeSizeCodes.has(codeName)
+        && sequence.length < 12
+        && allowedTubeSizes.has(sequence.length);
+
+      if (autoTubeSize) {
+        fibersPerTube.value = String(sequence.length);
+        fibersPerTube.disabled = true;
+        fibersPerTube.title = `${codeName} uses a fixed ${sequence.length}-fiber tube size.`;
+      } else {
+        fibersPerTube.disabled = false;
+        fibersPerTube.title = "";
+      }
+    }
 
     function calculate() {
       const codeName = colorCode.value;
@@ -341,9 +364,11 @@
       if (!allowedTubeSizes.has(perTube)) return showError("Choose 1, 2, 4, 6, 8, 12 or 24 fibers per tube.");
       if (!Number.isInteger(fiber) || fiber < 1) return showError("Fiber number must be 1 or more.");
 
-      const supportsStriped24 = codeName === "Telenor" || codeName === "OPGW / TIA-598";
+      const supportsStriped24 = codeName === "Telenor"
+        || codeName === "OPGW / TIA-598"
+        || codeName === "Skanove S12";
       if (perTube === 24 && !supportsStriped24) {
-        return showError(`24 fibers per tube with /// identification is currently defined only for Telenor and OPGW.`);
+        return showError(`24 fibers per tube with /// identification is currently defined only for Telenor, OPGW and S12.`);
       }
       if (perTube !== 24 && perTube > sequence.length) {
         return showError(`${codeName} has ${sequence.length} defined fiber colors in the supplied sheet. Choose a smaller tube size.`);
@@ -390,11 +415,17 @@
       error.style.display = "block";
     }
 
-    [colorCode, fibersPerTube, fiberNumber].forEach(el => {
+    colorCode.addEventListener("change", () => {
+      syncTubeSizeToColorCode();
+      calculate();
+    });
+
+    [fibersPerTube, fiberNumber].forEach(el => {
       el.addEventListener("input", calculate);
       el.addEventListener("change", calculate);
     });
 
+    syncTubeSizeToColorCode();
     calculate();
   </script>
 </body>
