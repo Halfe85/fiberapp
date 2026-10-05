@@ -334,9 +334,10 @@
       "BBS 12F"
     ]);
 
-    const allowedTubeSizes = new Set(Array.from({ length: 24 }, (_, i) => i + 1));
+    const tubeSizeOptions = [1, 2, 4, 6, 8, 12, 16, 24];
+    const allowedTubeSizes = new Set(tubeSizeOptions);
 
-    for (let size = 1; size <= 24; size += 1) {
+    for (const size of tubeSizeOptions) {
       const option = document.createElement("option");
       option.value = String(size);
       option.textContent = String(size);
@@ -356,7 +357,7 @@
 
       if (usesStandard12Rules) {
         fibersPerTube.disabled = false;
-        fibersPerTube.title = "Choose any tube size from 1 to 24.";
+        fibersPerTube.title = "Choose 1, 2, 4, 6, 8, 12, 16 or 24 fibers per tube.";
         return;
       }
 
@@ -371,7 +372,7 @@
       const perTube = Number.parseInt(fibersPerTube.value, 10);
       const fiber = Number.parseInt(fiberNumber.value, 10);
 
-      if (!allowedTubeSizes.has(perTube)) return showError("Choose a tube size from 1 to 24 fibers.");
+      if (!allowedTubeSizes.has(perTube)) return showError("Choose 1, 2, 4, 6, 8, 12, 16 or 24 fibers per tube.");
       if (!Number.isInteger(fiber) || fiber < 1) return showError("Fiber number must be 1 or more.");
 
       const usesStandard12Rules = standard12ColorCodes.has(codeName);
