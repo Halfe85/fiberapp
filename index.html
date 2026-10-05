@@ -341,7 +341,7 @@
       if (!allowedTubeSizes.has(perTube)) return showError("Choose 1, 2, 4, 6, 8, 12 or 24 fibers per tube.");
       if (!Number.isInteger(fiber) || fiber < 1) return showError("Fiber number must be 1 or more.");
 
-      const supportsStriped24 = codeName === "Telenor" || codeName.startsWith("OPGW");
+      const supportsStriped24 = codeName === "Telenor" || codeName === "OPGW / TIA-598";
       if (perTube === 24 && !supportsStriped24) {
         return showError(`24 fibers per tube with /// identification is currently defined only for Telenor and OPGW.`);
       }
@@ -357,18 +357,24 @@
       const striped = perTube === 24 && supportsStriped24 && position > 12;
       const colorIndex = striped ? position - 13 : position - 1;
       const color = sequence[colorIndex];
+      const blankStripedBlack = striped && color.name === "Black";
+      const displayColor = blankStripedBlack ? C.White : color;
       const first = ((tube - 1) * perTube) + 1;
       const last = tube * perTube;
 
       tubeNumber.textContent = tube;
-      fiberColor.textContent = striped ? `${color.name.toUpperCase()} ///` : color.name.toUpperCase();
+      fiberColor.textContent = blankStripedBlack
+        ? "BLANK ///"
+        : striped
+          ? `${color.name.toUpperCase()} ///`
+          : color.name.toUpperCase();
       fiberPosition.textContent = `${position} / ${perTube}`;
       tubeRange.textContent = `${first}–${last}`;
 
-      colorMetric.style.setProperty("--fiber-color", color.css);
-      colorMetric.classList.toggle("dark-text", color.dark);
-      colorMetric.classList.toggle("light-text", !color.dark);
-      colorMetric.classList.toggle("clear", Boolean(color.clear));
+      colorMetric.style.setProperty("--fiber-color", displayColor.css);
+      colorMetric.classList.toggle("dark-text", displayColor.dark);
+      colorMetric.classList.toggle("light-text", !displayColor.dark);
+      colorMetric.classList.toggle("clear", Boolean(displayColor.clear));
       colorMetric.classList.toggle("striped", striped);
 
       localStorage.setItem("fiberFinder", JSON.stringify({
