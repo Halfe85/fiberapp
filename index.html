@@ -248,11 +248,11 @@
             spellcheck="false"
             enterkeyhint="done"
             value="55"
-            placeholder="55 or 13+14"
+            placeholder="55 or 13,14"
             aria-describedby="fiberNumberHint"
             autofocus
           />
-          <span id="fiberNumberHint" class="field-hint">Use + for multiple fibers, e.g. 13+14</span>
+          <span id="fiberNumberHint" class="field-hint">Use comma for multiple fibers, e.g. 13,14</span>
         </label>
       </div>
     </section>
@@ -370,12 +370,12 @@
       const raw = value.trim();
       if (!raw) return { error: "Enter a fiber number." };
 
-      if (!/^\d+(?:\s*\+\s*\d+)*$/.test(raw)) {
-        return { error: "Use fiber numbers separated by +, for example 13+14." };
+      if (!/^\d+(?:\s*,\s*\d+)*$/.test(raw)) {
+        return { error: "Use fiber numbers separated by comma, for example 13,14." };
       }
 
       const fibers = raw
-        .split("+")
+        .split(",")
         .map(part => Number.parseInt(part.trim(), 10));
 
       if (fibers.some(fiber => !Number.isInteger(fiber) || fiber < 1)) {
