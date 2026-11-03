@@ -11,6 +11,8 @@ interface ProjectItem {
   name:string;
   note:string;
   equipmentType:string;
+  latitude?:number;
+  longitude?:number;
   createdAt:string;
 }
 const KEY='fiberapp.planner.items.v1';
@@ -64,6 +66,10 @@ const KEY='fiberapp.planner.items.v1';
               <option value="Svitsj">Svitsj</option>
             </select>
           </ng-container>
+          <div class="project-position-picker">
+            <button type="button" class="secondary" (click)="pickPosition()">Velg posisjon i kartet</button>
+            <span class="project-position-status" aria-live="polite">{{positionLabel}}</span>
+          </div>
           <label for="ng-item-note">Beskrivelse (valgfritt)</label>
           <textarea id="ng-item-note" name="itemNote" rows="3" maxlength="300"
                     [(ngModel)]="note"></textarea>
@@ -86,7 +92,14 @@ export class ProjectItemsComponent implements OnInit,OnDestroy {
   name='';
   note='';
   equipmentType='Annet';
+  selectedPosition:{latitude:number;longitude:number}|null=null;
+  pickingKind:ItemKind|null=null;
   constructor(public readonly ui:PlannerUiService){}
+  get positionLabel():string {
+    return this.selectedPosition
+      ? 'Posisjon valgt: '+this.selectedPosition.latitude.toFixed(6)+', '+this.selectedPosition.longitude.toFixed(6)
+      : 'Ingen kartposisjon valgt';
+  }
   get addressItems():ProjectItem[]{
     return this.items.filter(i=>i.projectId===this.projectId && i.kind==='address');
   }
@@ -112,11 +125,32 @@ export class ProjectItemsComponent implements OnInit,OnDestroy {
     }
   }
   ngOnDestroy():void{this.ui.closeItem();}
+  pickPosition():void {
+    const kind=this.ui.itemModal();
+    if(!kind || !this.projectId)return;
+    this.pickingKind=kind;
+    this.ui.closeItem();
+    window.dispatchEvent(new CustomEvent('fiberapp:planner-map-select-start',{
+      detail:{projectId:this.projectId,kind}
+    }));
+  }
+  @HostListener('window:fiberapp:planner-map-picked',['$event'])
+  onMapPicked(event:Event):void {
+    const detail=(event as CustomEvent<{projectId:string;latitude:number;longitude:number}>).detail;
+    if(!this.pickingKind || !detail || detail.projectId!==this.projectId ||
+       !Number.isFinite(detail.latitude) || !Number.isFinite(detail.longitude))return;
+    const kind=this.pickingKind;
+    this.pickingKind=null;
+    this.selectedPosition={latitude:detail.latitude,longitude:detail.longitude};
+    this.ui.openItem(kind);
+  }
   close():void{
     this.ui.closeItem();
     this.name='';
     this.note='';
     this.equipmentType='Annet';
+    this.selectedPosition=null;
+    this.pickingKind=null;
     this.modalError='';
   }
   @HostListener('document:keydown.escape')
@@ -135,12 +169,16 @@ export class ProjectItemsComponent implements OnInit,OnDestroy {
     const next:ProjectItem[]=[...this.items,{
       id,projectId:this.projectId,kind,name,note,
       equipmentType:kind==='equipment'?this.equipmentType:'',
+      ...(this.selectedPosition||{}),
       createdAt:new Date().toISOString()
     }];
     try{
       localStorage.setItem(KEY,JSON.stringify(next));
       this.items=next;
       this.storageError='';
+      window.dispatchEvent(new CustomEvent('fiberapp:planner-items-changed',{
+        detail:{projectId:this.projectId}
+      }));
       this.close();
     }catch{
       this.modalError='Kunne ikke lagre. Kontroller nettleserlagringen.';
