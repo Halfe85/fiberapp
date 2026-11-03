@@ -345,7 +345,7 @@ app-planner .dialog-actions button{min-height:44px}
   app-planner .dialog-actions button{flex:1}
 }
 
-/* iOS-style swipe reveal for project rows, with a keyboard-accessible chevron. */
+/* Wrench drawer: auto-reveal on desktop hover or keyboard focus; touch swipe stays. */
 app-planner .project-swipe{
   position:relative;isolation:isolate;overflow:hidden;width:100%;min-width:0;
   border-radius:14px;background:#dcecf9;touch-action:pan-y;
@@ -363,15 +363,11 @@ app-planner .project-swipe .project-row{
   transition:transform .2s cubic-bezier(.2,.75,.2,1);gap:12px;
 }
 app-planner .project-swipe.open .project-row{transform:translateX(-76px)}
-app-planner .project-swipe .project-reveal{
-  flex:0 0 44px;width:44px;height:44px;min-width:44px;padding:0;
-  display:grid;place-items:center;border:0;border-radius:11px;
-  background:#eaf3fc;color:#246b9c;font-size:29px;line-height:1;
-  cursor:pointer;touch-action:manipulation;
+/* Focus and hover reveal the wrench without a separate arrow button. */
+app-planner .project-swipe:focus-within .project-row{transform:translateX(-76px)}
+@media(hover:hover) and (pointer:fine){
+ app-planner .project-swipe:hover .project-row{transform:translateX(-76px)}
 }
-app-planner .project-swipe.open .project-reveal{transform:rotate(180deg)}
-app-planner .project-swipe .project-reveal:hover,
-app-planner .project-swipe .project-reveal:focus-visible{background:#d6eaf9}
 @media(max-width:699px){
   app-planner .project-swipe .project-row{flex-direction:row;align-items:center}
   app-planner .project-swipe .project-created{white-space:normal}

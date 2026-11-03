@@ -1,4 +1,4 @@
-/* Fiber Planner project list: localStorage prototype, swipe-reveal tools. */
+/* Fiber Planner project list: hover on desktop, swipe on touch, wrench settings. */
 (() => {
   'use strict';
   const KEY = 'fiberapp.planner.projects.v1';
@@ -38,11 +38,6 @@
     for (const row of list.querySelectorAll('.project-swipe')) {
       const open = row.dataset.projectId === openId;
       row.classList.toggle('open', open);
-      const toggle = row.querySelector('.project-reveal');
-      const tool = row.querySelector('.project-tool');
-      toggle.setAttribute('aria-expanded', String(open));
-      toggle.setAttribute('aria-label', open ? 'Lukk prosjektverktøy' : 'Vis prosjektverktøy');
-      tool.tabIndex = open ? 0 : -1;
     }
   }
   function startSettings(project) {
@@ -65,7 +60,6 @@
     tool.className = 'project-tool';
     tool.setAttribute('aria-label', 'Innstillinger for ' + project.name);
     tool.title = 'Prosjektinnstillinger';
-    tool.tabIndex = -1;
     tool.innerHTML = wrenchSvg;
     tool.addEventListener('click', () => startSettings(project));
 
@@ -84,20 +78,12 @@
     const date = document.createElement('time');
     date.dateTime = project.createdAt;
     date.textContent = new Date(project.createdAt).toLocaleDateString('nb-NO');
-    const reveal = document.createElement('button');
-    reveal.type = 'button';
-    reveal.className = 'project-reveal';
-    reveal.textContent = '‹';
-    reveal.title = 'Vis prosjektverktøy';
-    reveal.setAttribute('aria-label', 'Vis prosjektverktøy');
-    reveal.setAttribute('aria-expanded', 'false');
-    reveal.addEventListener('click', () => showTools(project.id));
-    row.append(info, date, reveal);
+    row.append(info, date);
     wrap.append(tool, row);
 
     let start = null;
     wrap.addEventListener('pointerdown', event => {
-      if (event.button !== 0 || event.target.closest('.project-tool, .project-reveal')) return;
+      if (event.button !== 0 || event.target.closest('.project-tool')) return;
       start = { x:event.clientX, y:event.clientY, id:event.pointerId };
     });
     wrap.addEventListener('pointerup', event => {

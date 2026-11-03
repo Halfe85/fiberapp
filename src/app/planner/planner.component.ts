@@ -33,7 +33,6 @@ const STORAGE_KEY='fiberapp.planner.projects.v1';
            (pointercancel)="pointerStart=null">
         <button type="button" class="project-tool" title="Prosjektinnstillinger"
                 [attr.aria-label]="'Innstillinger for '+item.name"
-                [attr.tabindex]="openProjectId===item.id ? 0 : -1"
                 (click)="openSettings(item)">
           <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"
                stroke-linecap="round" stroke-linejoin="round">
@@ -46,10 +45,6 @@ const STORAGE_KEY='fiberapp.planner.projects.v1';
             <p *ngIf="item.description">{{item.description}}</p>
           </div>
           <time class="project-created" [attr.datetime]="item.createdAt">{{formatDate(item.createdAt)}}</time>
-          <button type="button" class="project-reveal"
-                  [attr.aria-expanded]="openProjectId===item.id"
-                  [attr.aria-label]="openProjectId===item.id ? 'Lukk prosjektverktøy' : 'Vis prosjektverktøy'"
-                  (click)="toggleTools(item.id)">‹</button>
         </article>
       </div>
     </div>
@@ -120,9 +115,8 @@ export class PlannerComponent implements OnInit {
       this.error='Kunne ikke lese lagrede prosjekter. Eksisterende data er ikke overskrevet.';
     }
   }
-  toggleTools(id:string):void{this.openProjectId=this.openProjectId===id?null:id;}
   onProjectPointerDown(event:PointerEvent,id:string):void{
-    if(event.button!==0 || (event.target as Element).closest('.project-tool,.project-reveal'))return;
+    if(event.button!==0 || (event.target as Element).closest('.project-tool'))return;
     this.pointerStart={x:event.clientX,y:event.clientY,pointerId:event.pointerId,projectId:id};
   }
   onProjectPointerUp(event:PointerEvent,id:string):void{

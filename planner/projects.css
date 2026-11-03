@@ -46,7 +46,7 @@
  .dialog-actions button{flex:1}
 }
 
-/* Swipe-to-reveal wrench tool on the right side of every project tile. */
+/* Wrench drawer: auto-reveal on desktop hover or keyboard focus; touch swipe stays. */
 .project-swipe{position:relative;isolation:isolate;overflow:hidden;width:100%;min-width:0;
   border-radius:14px;background:#dcecf9;touch-action:pan-y}
 .project-swipe .project-tool{position:absolute;right:0;top:0;bottom:0;width:76px;
@@ -57,15 +57,14 @@
 .project-swipe .project-row{position:relative;z-index:1;width:100%;margin:0;min-height:84px;
   transition:transform .2s cubic-bezier(.2,.75,.2,1);gap:12px}
 .project-swipe.open .project-row{transform:translateX(-76px)}
-.project-swipe .project-reveal{flex:0 0 44px;width:44px;height:44px;border:0;
-  border-radius:11px;background:#eaf3fc;color:#246b9c;font-size:29px;line-height:1;
-  cursor:pointer;touch-action:manipulation;display:grid;place-items:center;padding:0}
-.project-swipe.open .project-reveal{transform:rotate(180deg)}
-.project-swipe .project-reveal:hover,.project-swipe .project-reveal:focus-visible{background:#d6eaf9}
+/* Focus and hover do not need a separate arrow button. */
+.project-swipe:focus-within .project-row{transform:translateX(-76px)}
+@media(hover:hover) and (pointer:fine){
+ .project-swipe:hover .project-row{transform:translateX(-76px)}
+}
 .project-swipe .project-row .content{min-width:0}
 @media(max-width:699px){
  .project-swipe .project-row{flex-direction:row;align-items:center}
  .project-swipe .project-row time{white-space:normal}
- .project-swipe .project-reveal{align-self:center}
 }
 @media(prefers-reduced-motion:reduce){.project-swipe .project-row{transition:none}}
