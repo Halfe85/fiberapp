@@ -381,6 +381,31 @@ export class ProjectMapComponent implements AfterViewInit,OnChanges,OnDestroy {
     this.mapHost.nativeElement.scrollIntoView({behavior:'smooth',block:'nearest'});
   }
 
+  @HostListener('window:fiberapp:planner-address-focus',['$event'])
+  onAddressFocus(event:Event):void {
+    const detail=(event as CustomEvent<{projectId:string;itemId:string}>).detail;
+    if(!detail || detail.projectId!==this.projectId || !this.map ||
+       this.destroyed || this.picking || this.selectingParcel)return;
+    let parsed:unknown;
+    try{
+      const raw=localStorage.getItem(ITEM_KEY);
+      parsed=raw?JSON.parse(raw):[];
+    }catch{return;}
+    if(!Array.isArray(parsed))return;
+    const address=(parsed as ProjectMapItem[]).find(item=>item &&
+      item.id===detail.itemId && item.projectId===this.projectId &&
+      item.kind==='address' && Number.isFinite(item.latitude) &&
+      Number.isFinite(item.longitude) &&
+      Math.abs(item.latitude as number)<=90 && Math.abs(item.longitude as number)<=180);
+    if(!address)return;
+    ++this.postcodeRequest;
+    this.map.invalidateSize({pan:false});
+    const center=[address.latitude as number,address.longitude as number];
+    if(typeof this.map.flyTo==='function')this.map.flyTo(center,18,{duration:0.65});
+    else this.map.setView(center,18);
+    this.message.nativeElement.textContent='Viser '+address.name+' på kartet.';
+  }
+
   @HostListener('window:fiberapp:planner-items-changed',['$event'])
   onItemsChanged(event:Event):void {
     const detail=(event as CustomEvent<{projectId:string}>).detail;

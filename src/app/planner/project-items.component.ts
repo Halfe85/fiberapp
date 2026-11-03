@@ -55,18 +55,24 @@ const ADDRESS_API='https://api.kartverket.no/adresser/v1/sok';
   standalone:true,
   imports:[CommonModule,FormsModule,AddressAreaMapComponent],
   template:`
-    <div class="planner-item-groups" *ngIf="addressItems.length || equipmentItems.length">
-      <section class="planner-item-section" *ngIf="addressItems.length">
+    <div class="planner-item-groups">
+      <section class="planner-item-section planner-address-section" aria-label="Adresser">
         <h3>Adresser</h3>
         <div class="planner-item-list">
-          <article class="planner-item-row" *ngFor="let item of addressItems; trackBy:trackId">
-            <strong>{{item.name}}</strong>
-            <span class="project-item-parcel" *ngIf="item.area || item.parcel">
-              {{item.area?.kind==='building' ? 'Bygg' : 'Tomt'}}:
-              {{item.area?.propertyLabel || item.parcel?.propertyLabel || 'tegnet område'}}
-            </span>
-            <p *ngIf="item.note">{{item.note}}</p>
+          <article class="planner-item-row planner-address-row" *ngFor="let item of addressItems; trackBy:trackId">
+            <button type="button" class="planner-address-focus"
+                    [disabled]="!hasAddressLocation(item)"
+                    [attr.aria-label]="'Vis '+item.name+' på kartet'"
+                    (click)="focusAddress(item)">
+              <strong>{{item.name}}</strong>
+              <span class="project-item-parcel" *ngIf="item.area || item.parcel">
+                {{item.area?.kind==='building' ? 'Bygg' : 'Tomt'}}:
+                {{item.area?.propertyLabel || item.parcel?.propertyLabel || 'tegnet område'}}
+              </span>
+              <span class="planner-item-note" *ngIf="item.note">{{item.note}}</span>
+            </button>
           </article>
+          <p class="planner-items-empty" *ngIf="!addressItems.length">Ingen adresser lagt til ennå.</p>
         </div>
       </section>
       <section class="planner-item-section" *ngIf="equipmentItems.length">
@@ -295,6 +301,17 @@ export class ProjectItemsComponent implements OnInit,OnDestroy {
     return this.items.filter(i=>i.projectId===this.projectId && i.kind==='equipment');
   }
   trackId(_index:number,item:ProjectItem):string{return item.id;}
+  hasAddressLocation(item:ProjectItem):boolean {
+    return item.kind==='address' &&
+      Number.isFinite(item.latitude) && Number.isFinite(item.longitude) &&
+      Math.abs(item.latitude as number)<=90 && Math.abs(item.longitude as number)<=180;
+  }
+  focusAddress(item:ProjectItem):void {
+    if(item.projectId!==this.projectId || !this.hasAddressLocation(item))return;
+    window.dispatchEvent(new CustomEvent('fiberapp:planner-address-focus',{
+      detail:{projectId:this.projectId,itemId:item.id}
+    }));
+  }
   ngOnInit():void{
     try{
       const raw=localStorage.getItem(KEY);

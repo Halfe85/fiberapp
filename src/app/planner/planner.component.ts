@@ -72,11 +72,11 @@ const STORAGE_KEY='fiberapp.planner.projects.v1';
   <section class="page planner-workspace" *ngIf="activeProject as current"
            aria-labelledby="ng-workspace-title">
     <div class="planner-workspace-grid">
+      <app-project-items [projectId]="current.id"></app-project-items>
       <div class="workspace-heading">
         <h2 id="ng-workspace-title">{{current.name}}</h2>
         <p class="workspace-description" *ngIf="current.description">{{current.description}}</p>
       </div>
-      <app-project-items [projectId]="current.id"></app-project-items>
       <div class="project-map-column">
         <app-project-map [projectId]="current.id" [postcode]="current.postcode || ''"></app-project-map>
         <div class="project-map-lower" aria-hidden="true"></div>
