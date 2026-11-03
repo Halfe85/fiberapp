@@ -159,3 +159,31 @@ app-root>.footer,app-root>.home-bottom-bar{position:relative;flex-shrink:0}
  .topbar .left-actions .header-icon{width:40px;min-width:40px;height:44px}
  .topbar .brand{font-size:16px}
 }
+
+/* Keep homepage and inner pages identical on phones. */
+@media(max-width:699px){
+ .topbar .topinner{
+   display:grid;
+   grid-template-columns:minmax(88px,1fr) auto minmax(88px,1fr);
+   align-items:center;
+   gap:0;
+ }
+ .topbar .left-actions{
+   grid-column:1;
+   grid-row:1;
+   justify-self:start;
+   display:flex;
+   flex-wrap:nowrap;
+   gap:4px;
+ }
+ .topbar .left-actions .menu-toggle,
+ .topbar .left-actions .home-link{position:static;flex:0 0 44px}
+ .topbar .brand{grid-column:2;grid-row:1;justify-self:center}
+}
+@media(max-width:350px){
+ .topbar .topinner{grid-template-columns:minmax(80px,1fr) auto minmax(80px,1fr)}
+ .topbar .left-actions{gap:0}
+ .topbar .left-actions .menu-toggle,
+ .topbar .left-actions .home-link{flex-basis:40px}
+ .topbar .brand{font-size:15px}
+}

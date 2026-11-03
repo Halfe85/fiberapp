@@ -54,3 +54,32 @@ header.site-header{position:relative;z-index:30}
  .site-header .site-actions .header-icon{width:40px;min-width:40px;height:44px}
  .site-header .site-brand{font-size:16px}
 }
+
+/* Explicit mobile placement: both controls stay grouped at far left.
+   Keep symmetric side columns to center the FiberApp brand in the viewport. */
+@media(max-width:699px){
+ .site-header .site-shell{
+   display:grid;
+   grid-template-columns:minmax(88px,1fr) auto minmax(88px,1fr);
+   align-items:center;
+   gap:0;
+ }
+ .site-header .site-actions{
+   display:flex;
+   flex-wrap:nowrap;
+   grid-column:1;
+   grid-row:1;
+   justify-self:start;
+   gap:4px;
+ }
+ .site-header .site-actions .menu-toggle,
+ .site-header .site-actions .home-link{position:static;flex:0 0 44px}
+ .site-header .site-brand{grid-column:2;grid-row:1;justify-self:center}
+}
+@media(max-width:350px){
+ .site-header .site-shell{grid-template-columns:minmax(80px,1fr) auto minmax(80px,1fr)}
+ .site-header .site-actions{gap:0}
+ .site-header .site-actions .menu-toggle,
+ .site-header .site-actions .home-link{flex-basis:40px}
+ .site-header .site-brand{font-size:15px}
+}
