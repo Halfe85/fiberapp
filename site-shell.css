@@ -4,7 +4,7 @@
 html{height:100%;overflow:hidden}
 body{height:100vh;height:100dvh;min-height:0;overflow:hidden;display:grid;grid-template-rows:auto minmax(0,1fr) auto;padding:0}
 header.site-header{margin:0;background:#fff;border-bottom:1px solid #dce7f1;min-height:0}
-.site-shell{width:100%;max-width:1100px;margin-inline:auto;padding-inline:20px}
+.site-shell{width:100%;max-width:none;margin-inline:0;padding-inline:clamp(14px,2.2vw,32px)}
 .site-header .site-shell{min-height:64px;display:flex;align-items:center;justify-content:space-between;gap:16px}
 .site-brand{display:inline-flex;min-height:44px;align-items:center;font-size:19px;font-weight:900;letter-spacing:.05em;white-space:nowrap;color:#17344f;text-decoration:none}
 .site-brand span{color:#1d6fa8}
@@ -14,7 +14,7 @@ header.site-header{margin:0;background:#fff;border-bottom:1px solid #dce7f1;min-
 .site-nav .home-link svg{width:19px;height:19px;flex:none}
 .site-nav a:hover,.site-nav a[aria-current="page"]{color:#115c9c;background:#eaf3fc}
 main.site-main{min-width:0;min-height:0;max-height:100%;width:100%;margin:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch}
-main.landing-main.site-main{margin-inline:auto}
+main.landing-main.site-main{margin-inline:0}
 .site-footer{background:#edf4fb;border-top:1px solid #d4e1ee;color:#61768b}
 .site-footer .site-shell{padding-top:15px;padding-bottom:15px}
 .site-footer p{margin:0;font-size:13px;line-height:1.4;color:inherit}
