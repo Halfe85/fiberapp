@@ -7,9 +7,6 @@ import {colorCodes,standard12ColorCodes,tubeSizes,lookupFibers,FiberResult} from
  selector:'app-finder', standalone:true, imports:[CommonModule,FormsModule],
  template:`
  <section class="page narrow">
-  <div class="eyebrow">VERKTØY / FARGEKODER</div>
-  <h1>Fiberfinder</h1>
-  <p class="lead">Finn røret og fiberfargen. Støtter flere fibernummer i samme søk.</p>
   <div class="panel form-grid">
    <label>Fargekode
     <select [(ngModel)]="code" (ngModelChange)="onCodeChange()">
@@ -38,13 +35,8 @@ import {colorCodes,standard12ColorCodes,tubeSizes,lookupFibers,FiberResult} from
       <small>FIBERFARGE</small><strong>{{item.displayName}}</strong>
      </div>
     </div>
-    <div class="detail-grid">
-     <div><span>Posisjon i rør</span><strong>{{item.position}} / {{perTube}}</strong></div>
-     <div><span>Rørets fiberområde</span><strong>{{item.first}}–{{item.last}}</strong></div>
-    </div>
    </article>
   </div>
-  <p class="micro">Fargekoder overført fra eksisterende Fiberfinder uten endring i rekkefølgen.</p>
  </section>`
 })
 export class FinderComponent implements OnInit {
