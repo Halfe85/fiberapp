@@ -370,3 +370,58 @@
 @media(max-width:600px){
   .project-workspace-grid > .project-items{grid-template-columns:minmax(0,1fr)}
 }
+
+/* Project workspace: addresses own the entire first column, equipment the second. */
+.project-workspace-grid > .project-items{
+  display:contents;
+  margin:0;
+}
+.project-workspace-grid > .project-items > #project-addresses-section{
+  grid-column:1;
+  grid-row:1 / 3;
+  min-width:0;
+  align-self:stretch;
+}
+.project-workspace-grid > .project-items > #project-equipment-section{
+  grid-column:2;
+  grid-row:2;
+  min-width:0;
+}
+.project-workspace-grid > .project-workspace-heading{
+  grid-column:2;
+  grid-row:1;
+}
+.project-items-empty{font-size:13px;color:#74889a;margin:6px 0 0}
+.project-item{padding:0;overflow:hidden}
+.project-item > .project-item-focus,
+.project-item > div{
+  display:block;
+  box-sizing:border-box;
+  width:100%;
+  min-width:0;
+  border:0;
+  padding:12px 14px;
+  background:transparent;
+  color:inherit;
+  font:inherit;
+  text-align:left;
+}
+.project-item > .project-item-focus{cursor:pointer}
+.project-item > .project-item-focus:hover{background:#edf6ff}
+.project-item > .project-item-focus:focus-visible{
+  outline:3px solid #247db7;
+  outline-offset:-3px;
+  background:#edf6ff;
+}
+.project-item .project-item-note{
+  display:block;
+  font-size:13px;
+  color:#61778a;
+  margin-top:6px;
+}
+@media(max-width:940px){
+  .project-workspace-grid > .project-workspace-heading{grid-column:1;grid-row:1}
+  .project-workspace-grid > .project-items > #project-addresses-section{grid-column:1;grid-row:2}
+  .project-workspace-grid > .project-items > #project-equipment-section{grid-column:1;grid-row:3}
+  .project-workspace-grid > .project-map-column{grid-column:1;grid-row:4}
+}

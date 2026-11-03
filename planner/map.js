@@ -338,6 +338,20 @@
     message.textContent='Klikk eller trykk i kartet der punktet skal plasseres.';
     element.scrollIntoView({behavior:'smooth',block:'nearest'});
   });
+  window.addEventListener('fiberapp:planner-address-focus',event=>{
+    const {projectId,itemId}=event.detail || {};
+    if(!map || !projectId || projectId!==getProjectId() || choosing || selectingParcel)return;
+    // Resolve the item from this project's stored addresses, not from event coordinates.
+    const address=loadItems().find(item=>item && item.id===itemId &&
+      item.projectId===projectId && item.kind==='address' && valid(item));
+    if(!address)return;
+    ++postcodeRequest; // An in-flight postcode lookup must not override manual focus.
+    map.invalidateSize({pan:false});
+    const center=[address.latitude,address.longitude];
+    if(typeof map.flyTo==='function')map.flyTo(center,18,{duration:0.65});
+    else map.setView(center,18);
+    message.textContent='Viser '+address.name+' på kartet.';
+  });
   window.addEventListener('fiberapp:planner-project-changed',updateProject);
   window.addEventListener('fiberapp:planner-items-changed',event=>{
     const projectId=getProjectId();

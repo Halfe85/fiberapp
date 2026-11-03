@@ -28,6 +28,7 @@
   const positionStatus = document.getElementById('project-item-position');
   const errorBox = document.getElementById('project-item-error');
   const itemsContainer = document.getElementById('project-items');
+  const addressEmpty = document.getElementById('project-addresses-empty');
   const sections = {
     address: {
       section: document.getElementById('project-addresses-section'),
@@ -216,18 +217,33 @@
       const target = sections[kind];
       target.list.replaceChildren();
       const found = rows.filter(item => item.projectId === currentProjectId && item.kind === kind);
-      target.section.hidden = !found.length;
+      target.section.hidden = kind === 'equipment' && !found.length;
+      if (kind === 'address') addressEmpty.hidden = found.length > 0;
       for (const item of found) {
         const article = document.createElement('article');
         article.className = 'project-item';
+        const mappedAddress = kind === 'address' &&
+          Number.isFinite(item.latitude) && Number.isFinite(item.longitude) &&
+          Math.abs(item.latitude) <= 90 && Math.abs(item.longitude) <= 180;
+        const content = document.createElement(mappedAddress ? 'button' : 'div');
+        if (mappedAddress) {
+          content.type = 'button';
+          content.className = 'project-item-focus';
+          content.setAttribute('aria-label', 'Vis ' + item.name + ' på kartet');
+          content.addEventListener('click', () => {
+            window.dispatchEvent(new CustomEvent('fiberapp:planner-address-focus', {
+              detail:{projectId:item.projectId,itemId:item.id}
+            }));
+          });
+        }
         const strong = document.createElement('strong');
         strong.textContent = item.name;
-        article.append(strong);
+        content.append(strong);
         if (kind === 'equipment' && item.equipmentType) {
           const type = document.createElement('span');
           type.className = 'project-item-type';
           type.textContent = item.equipmentType;
-          article.append(type);
+          content.append(type);
         }
         if (kind === 'address' && (item.area || item.parcel)) {
           const area = item.area || item.parcel;
@@ -235,24 +251,25 @@
           areaInfo.className = 'project-item-parcel';
           areaInfo.textContent = (area.kind === 'building' ? 'Bygg' : 'Tomt') +
             (area.propertyLabel ? ': ' + area.propertyLabel : ': tegnet område');
-          article.append(areaInfo);
+          content.append(areaInfo);
         }
         if (Number.isFinite(item.latitude) && Number.isFinite(item.longitude)) {
           const location = document.createElement('span');
           location.className = 'project-item-position';
           location.textContent = 'Kartposisjon registrert';
-          article.append(location);
+          content.append(location);
         }
         if (item.note) {
-          const detail = document.createElement('p');
+          const detail = document.createElement('span');
+          detail.className = 'project-item-note';
           detail.textContent = item.note;
-          article.append(detail);
+          content.append(detail);
         }
+        article.append(content);
         target.list.append(article);
       }
     }
-    itemsContainer.hidden = !currentProjectId ||
-      (sections.address.section.hidden && sections.equipment.section.hidden);
+    itemsContainer.hidden = !currentProjectId;
   }
   function openModal(kind) {
     closeMenu();
