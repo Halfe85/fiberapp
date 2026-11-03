@@ -49,7 +49,7 @@ const PARCEL_API='https://api.kartverket.no/eiendom/v1/punkt/omrader';
       <div class="address-area-edit">
         <button type="button" [disabled]="!points.length || (mode!=='parcel' && mode!=='building')"
                 (click)="undoPoint()">Angre punkt</button>
-        <button type="button" [disabled]="!selectedArea && !points.length && mode!=='official'"
+        <button type="button" [disabled]="!selectedArea && !points.length && !mode"
                 (click)="resetArea()">Nullstill område</button>
       </div>
       <p class="address-area-hint">
@@ -62,6 +62,7 @@ const PARCEL_API='https://api.kartverket.no/eiendom/v1/punkt/omrader';
 export class AddressAreaMapComponent implements AfterViewInit,OnChanges,OnDestroy {
   @Input() address:MapAddress|null=null;
   @Output() areaChanged=new EventEmitter<SelectedArea|null>();
+  @Output() pendingChange=new EventEmitter<boolean>();
   @ViewChild('mapHost') mapHost!:ElementRef<HTMLElement>;
   status='Velg en vegadresse til venstre for å vise kartet.';
   mode:DrawMode=null;
@@ -153,6 +154,7 @@ export class AddressAreaMapComponent implements AfterViewInit,OnChanges,OnDestro
   private showAddress():void {
     this.abortLookup();
     this.mode=null;
+    this.pendingChange.emit(false);
     this.clearArea(true);
     if(this.addressMarker && this.map){
       this.map.removeLayer(this.addressMarker);
@@ -179,6 +181,7 @@ export class AddressAreaMapComponent implements AfterViewInit,OnChanges,OnDestro
     if(!this.address || !this.map)return;
     this.abortLookup();
     this.mode=mode;
+    this.pendingChange.emit(true);
     this.clearArea();
     if(mode==='official'){
       this.status='Henter registrerte tomtegrenser. Bruk hele tomten bare ved én vegadresse.';
@@ -196,6 +199,7 @@ export class AddressAreaMapComponent implements AfterViewInit,OnChanges,OnDestro
   resetArea():void {
     this.abortLookup();
     this.mode=null;
+    this.pendingChange.emit(false);
     this.clearArea();
     this.status=this.address?'Området er nullstilt. Velg et nytt verktøy.':
       'Velg først en vegadresse.';
@@ -262,6 +266,7 @@ export class AddressAreaMapComponent implements AfterViewInit,OnChanges,OnDestro
       geometry:{type:'Polygon',coordinates:[ring]}
     };
     this.mode=null;
+    this.pendingChange.emit(false);
     this.points=[];
     this.draft.clearLayers();
     this.showSaved();
@@ -335,6 +340,7 @@ export class AddressAreaMapComponent implements AfterViewInit,OnChanges,OnDestro
               };
               this.abortLookup();
               this.mode=null;
+              this.pendingChange.emit(false);
               this.candidates.clearLayers();
               this.showSaved();
               this.status='Valgt tomt: '+label+'. Bekreft at den gjelder bare denne vegadressen.';

@@ -28,6 +28,11 @@
   let lookupToken=0;
   let lookupController=null;
   const msg=text=>{status.textContent=text;};
+  const announceProgress=()=>{
+    window.dispatchEvent(new CustomEvent('fiberapp:planner-address-area-pending',{
+      detail:{projectId,pending:Boolean(mode)}
+    }));
+  };
   const announce=()=>{
     window.dispatchEvent(new CustomEvent('fiberapp:planner-address-area-selected',{
       detail:{projectId,area}
@@ -41,8 +46,9 @@
     drawBuilding.setAttribute('aria-pressed',String(mode==='building'));
     drawParcel.setAttribute('aria-pressed',String(mode==='parcel'));
     undo.disabled=!['building','parcel'].includes(mode) || points.length===0;
-    reset.disabled=!area && points.length===0 && mode!=='official';
+    reset.disabled=!area && points.length===0 && !mode;
     host.classList.toggle('is-drawing',mode==='building'||mode==='parcel');
+    announceProgress();
   }
   function cancelLookup(){
     lookupToken++;

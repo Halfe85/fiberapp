@@ -45,6 +45,7 @@
   let selectedPosition = null;
   let selectedAddress = null;
   let selectedArea = null;
+  let areaPending = false;
   let searchSequence = 0;
   let searchTimer = null;
   let searchController = null;
@@ -161,6 +162,7 @@
   function onAddressInput() {
     selectedAddress = null;
     selectedArea = null;
+    areaPending = false;
     areaSelectedLabel.hidden = true;
     window.dispatchEvent(new CustomEvent('fiberapp:planner-address-clear',{
       detail:{projectId:selectedProject()}
@@ -261,6 +263,7 @@
     selectedPosition = null;
     selectedAddress = null;
     selectedArea = null;
+    areaPending = false;
     areaSelectedLabel.hidden = true;
     cancelSearch();
     addressQuery.value = '';
@@ -302,6 +305,11 @@
   document.getElementById('add-address').addEventListener('click', () => openModal('address'));
   document.getElementById('add-equipment').addEventListener('click', () => openModal('equipment'));
   addressQuery.addEventListener('input', onAddressInput);
+  window.addEventListener('fiberapp:planner-address-area-pending',event=>{
+    if(currentKind==='address' && event.detail?.projectId===selectedProject()){
+      areaPending=Boolean(event.detail.pending);
+    }
+  });
   window.addEventListener('fiberapp:planner-address-area-selected',event=>{
     if(currentKind !== 'address' || !selectedAddress ||
        event.detail?.projectId !== selectedProject())return;
@@ -355,6 +363,10 @@
     if (!canSave || !currentKind || !projectId || projectId !== currentProjectId) return;
     if (currentKind === 'address' && !selectedAddress) {
       error('Du må velge en offisiell vegadresse fra Kartverkets treffliste.');
+      return;
+    }
+    if(currentKind==='address' && areaPending){
+      error('Fullfør området ved å klikke første punkt, eller velg Nullstill område.');
       return;
     }
     if (!label || label.length > 120 || noteText.length > 300) {

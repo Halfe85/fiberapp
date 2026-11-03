@@ -142,13 +142,15 @@ const ADDRESS_API='https://api.kartverket.no/adresser/v1/sok';
             </div>
             <app-address-area-map *ngIf="ui.itemModal()==='address'"
               [address]="selectedAddress"
-              (areaChanged)="onAreaChanged($event)"></app-address-area-map>
+              (areaChanged)="onAreaChanged($event)"
+              (pendingChange)="drawingPending=$event"></app-address-area-map>
           </div>
           <div class="notice error" *ngIf="modalError" role="alert">{{modalError}}</div>
           <div class="dialog-actions">
             <button type="button" class="secondary" (click)="close()">Avbryt</button>
             <button type="submit"
-                    [disabled]="!canSave || (ui.itemModal()==='address' ? !selectedAddress : !name.trim())">
+                    [disabled]="!canSave || drawingPending ||
+                      (ui.itemModal()==='address' ? !selectedAddress : !name.trim())">
               Legg til
             </button>
           </div>
@@ -171,6 +173,7 @@ export class ProjectItemsComponent implements OnInit,OnDestroy {
   addressChoices:AddressChoice[]=[];
   selectedAddress:AddressChoice|null=null;
   selectedArea:SelectedArea|null=null;
+  drawingPending=false;
   private addressSequence=0;
   private addressTimer:ReturnType<typeof setTimeout>|null=null;
   private addressAbort:AbortController|null=null;
@@ -224,6 +227,7 @@ export class ProjectItemsComponent implements OnInit,OnDestroy {
   onAddressQueryChanged(query:string):void {
     this.selectedAddress=null;
     this.selectedArea=null;
+    this.drawingPending=false;
     this.addressChoices=[];
     this.cancelSearch();
     this.addressStatus='Skriv minst to tegn for å søke i Kartverkets adresseregister.';
@@ -273,6 +277,7 @@ export class ProjectItemsComponent implements OnInit,OnDestroy {
     this.cancelSearch();
     this.selectedAddress=choice;
     this.selectedArea=null;
+    this.drawingPending=false;
     this.addressQuery=choice.name;
     this.addressChoices=[];
     this.addressStatus='';
@@ -340,6 +345,7 @@ export class ProjectItemsComponent implements OnInit,OnDestroy {
     this.addressChoices=[];
     this.selectedAddress=null;
     this.selectedArea=null;
+    this.drawingPending=false;
     this.addressStatus='Skriv minst to tegn for å søke i Kartverkets adresseregister.';
     this.name='';
     this.note='';
@@ -357,6 +363,10 @@ export class ProjectItemsComponent implements OnInit,OnDestroy {
     const note=this.note.trim();
     if(kind==='address' && !this.selectedAddress){
       this.modalError='Du må velge en offisiell vegadresse fra Kartverkets treffliste.';
+      return;
+    }
+    if(kind==='address' && this.drawingPending){
+      this.modalError='Fullfør området ved å klikke første punkt, eller velg Nullstill område.';
       return;
     }
     if(!name || name.length>120 || note.length>300){

@@ -149,8 +149,11 @@
           try{
             const outline=window.L.geoJSON({
               type:'Feature',properties:{},geometry:parcel.geometry
-            },{style:{color:'#267e52',weight:3,fillColor:'#5eaa7e',
-              fillOpacity:0.18,interactive:false}});
+            },{style:{
+              color:item.area?.kind==='building'?'#bf711b':'#267e52',weight:3,
+              fillColor:item.area?.kind==='building'?'#edab62':'#5eaa7e',
+              fillOpacity:0.18,interactive:false
+            }});
             outline.addTo(savedParcels);
           }catch{/* An outdated or invalid polygon must not break the map. */}
         }
