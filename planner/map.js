@@ -5,6 +5,10 @@
   const ITEMS_KEY='fiberapp.planner.items.v1';
   const PROJECTS_KEY='fiberapp.planner.projects.v1';
   const POSTCODE_API='https://api.kartverket.no/adresser/v1/sok';
+  const PARCEL_API='https://api.kartverket.no/eiendom/v1/punkt/omrader';
+  const parcelToolbar=document.getElementById('planner-parcel-toolbar');
+  const parcelStatus=document.getElementById('planner-parcel-status');
+  const parcelCancel=document.getElementById('planner-parcel-cancel');
   const POSTCODE_PAGE_SIZE=50;
   const element=document.getElementById('planner-map');
   const message=document.getElementById('planner-map-message');
@@ -19,7 +23,11 @@
   const defaultMessage='Naviger i kartet. Plasser adresser eller utstyr via + i headeren.';
   let map=null;
   let pins=null;
+  let savedParcels=null;
+  let parcelCandidates=null;
   let choosing=false;
+  let selectingParcel=false;
+  let parcelToken=0;
   let ready=false;
   let postcodeRequest=0;
   const postcodeCache=new Map();
@@ -118,6 +126,8 @@
   function updatePins(fit=false){
     if(!map || !pins)return;
     pins.clearLayers();
+    if(savedParcels)savedParcels.clearLayers();
+    const visibleParcels=new Set();
     const id=getProjectId();
     if(!id)return;
     const bounds=[];
@@ -130,6 +140,21 @@
       marker.bindPopup(popupNode(item));
       marker.addTo(pins);
       bounds.push([item.latitude,item.longitude]);
+      const parcel=item.parcel;
+      if(item.kind==='address' && savedParcels && parcel?.geometry &&
+         ['Polygon','MultiPolygon'].includes(parcel.geometry.type)) {
+        const key=parcel.propertyId || JSON.stringify(parcel.geometry);
+        if(!visibleParcels.has(key)){
+          visibleParcels.add(key);
+          try{
+            const outline=window.L.geoJSON({
+              type:'Feature',properties:{},geometry:parcel.geometry
+            },{style:{color:'#267e52',weight:3,fillColor:'#5eaa7e',
+              fillOpacity:0.18,interactive:false}});
+            outline.addTo(savedParcels);
+          }catch{/* An outdated or invalid polygon must not break the map. */}
+        }
+      }
     }
     // Only use marker bounds when there is no valid postcode (or lookup fails).
     // Otherwise this would overwrite the postcode zoom on project re-entry.
@@ -151,6 +176,8 @@
       attribution:'&copy; <a href="https://www.kartverket.no/" target="_blank" rel="noopener noreferrer">Kartverket</a>',
       minZoom:3,maxZoom:19,maxNativeZoom:18
     }).addTo(map);
+    savedParcels=window.L.layerGroup().addTo(map);
+    parcelCandidates=window.L.layerGroup().addTo(map);
     pins=window.L.layerGroup().addTo(map);
     map.setView([64,11],5); // Leaflet needs an initial view before its tiles load.
     map.on('click',e=>{
@@ -170,6 +197,7 @@
   }
   function updateProject(){
     choosing=false;
+    stopParcelSelection(false);
     element.classList.remove('picking-position');
     message.textContent=defaultMessage;
     const projectId=getProjectId();
@@ -190,6 +218,88 @@
       else updatePins(true);
     });
   }
+  // Property outlines come from Matrikkelen and may contain approximate boundary lines.
+  function stopParcelSelection(notify=true){
+    const id=getProjectId();
+    parcelToken++;
+    selectingParcel=false;
+    if(parcelCandidates)parcelCandidates.clearLayers();
+    if(parcelToolbar)parcelToolbar.hidden=true;
+    if(notify && id){
+      window.dispatchEvent(new CustomEvent('fiberapp:planner-parcel-cancelled',{
+        detail:{projectId:id}
+      }));
+    }
+  }
+  async function selectParcel(event){
+    const detail=event.detail || {};
+    const projectId=getProjectId();
+    if(!map || !parcelCandidates || !parcelToolbar || !projectId ||
+       detail.projectId!==projectId ||
+       !Number.isFinite(detail.latitude) || !Number.isFinite(detail.longitude))return;
+    choosing=false;
+    selectingParcel=true;
+    const request=++parcelToken;
+    postcodeRequest++; // A pending postcode auto-fit must not steal focus from selection.
+    parcelCandidates.clearLayers();
+    parcelToolbar.hidden=false;
+    parcelStatus.textContent='Henter eiendomsgrenser fra Kartverket …';
+    map.invalidateSize({pan:false});
+    map.setView([detail.latitude,detail.longitude],18);
+    element.scrollIntoView({behavior:'smooth',block:'nearest'});
+    const params=new URLSearchParams({
+      nord:String(detail.latitude),ost:String(detail.longitude),
+      koordsys:'4258',utkoordsys:'4258',radius:'100',maksTreff:'40'
+    });
+    try{
+      const response=await fetch(PARCEL_API+'?'+params.toString(),{
+        headers:{Accept:'application/json'}
+      });
+      if(!response.ok)throw new Error('Kartverket eiendom: '+response.status);
+      const result=await response.json();
+      if(request!==parcelToken || !selectingParcel || projectId!==getProjectId())return;
+      const features=Array.isArray(result?.features)?result.features:[];
+      let count=0;
+      for(const feature of features){
+        if(!feature?.geometry ||
+           !['Polygon','MultiPolygon'].includes(feature.geometry.type) ||
+           !Array.isArray(feature.geometry.coordinates))continue;
+        const label=String(feature.properties?.matrikkelnummertekst ||
+          'Eiendom ' + (count+1)).slice(0,120);
+        const id=feature.properties?.lokalid;
+        const propertyId=id==null?'':String(id);
+        const geometry=feature.geometry;
+        // Keep localStorage usage bounded for exceptionally complex polygons.
+        if(JSON.stringify(geometry).length>150000)continue;
+        try{
+          const layer=window.L.geoJSON(feature,{
+            style:{color:'#087bb6',weight:2,fillColor:'#55b9e6',fillOpacity:.16}
+          });
+          layer.eachLayer(path=>{
+            path.on('mouseover',()=>path.setStyle({color:'#e98b17',weight:4,fillOpacity:.3}));
+            path.on('mouseout',()=>path.setStyle({color:'#087bb6',weight:2,fillOpacity:.16}));
+            path.on('click',()=>{
+              const parcel={propertyId,propertyLabel:label,geometry};
+              stopParcelSelection(false);
+              window.dispatchEvent(new CustomEvent('fiberapp:planner-parcel-selected',{
+                detail:{projectId,parcel}
+              }));
+            });
+          });
+          layer.addTo(parcelCandidates);
+          count++;
+        }catch{/* Ignore malformed features rather than drawing the wrong parcel. */}
+      }
+      parcelStatus.textContent=count
+        ? 'Velg riktig tomt ved å trykke på en blå flate ('+count+' tilgjengelige).'
+        : 'Ingen tomteflater funnet her. Avbryt og lagre adressen som punkt.';
+    }catch{
+      if(request!==parcelToken || !selectingParcel)return;
+      parcelStatus.textContent='Kunne ikke hente eiendomsgrenser. Avbryt og lagre adressen som punkt.';
+    }
+  }
+  window.addEventListener('fiberapp:planner-parcel-select-start',selectParcel);
+  if(parcelCancel)parcelCancel.addEventListener('click',()=>stopParcelSelection(true));
   window.addEventListener('fiberapp:planner-map-select-start',event=>{
     if(!map || !ready || !getProjectId() || event.detail?.projectId!==getProjectId()){
       message.textContent='Kartet er ikke klart for å velge posisjon.';

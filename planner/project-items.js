@@ -18,6 +18,8 @@
   const addressStatus = document.getElementById('project-address-status');
   const addressScope = document.getElementById('project-address-scope');
   const addressSelected = document.getElementById('project-address-selected');
+  const parcelButton = document.getElementById('project-address-pick-parcel');
+  const parcelSelectedLabel = document.getElementById('project-address-parcel-selected');
   const equipmentPositionPicker = document.getElementById('project-equipment-position-picker');
   const note = document.getElementById('project-item-note');
   const typeFields = document.getElementById('project-equipment-type-fields');
@@ -42,6 +44,8 @@
   let currentKind = null;
   let selectedPosition = null;
   let selectedAddress = null;
+  let selectedParcel = null;
+  let selectingParcel = false;
   let searchSequence = 0;
   let searchTimer = null;
   let searchController = null;
@@ -131,6 +135,10 @@
         option.append(label,location);
         option.addEventListener('click', () => {
           selectedAddress = candidate;
+          selectedParcel = null;
+          parcelButton.disabled = false;
+          parcelButton.hidden = false;
+          parcelSelectedLabel.hidden = true;
           addressQuery.value = candidate.name;
           resetResults('');
           addressSelected.textContent = 'Valgt vegadresse: ' + candidate.name +
@@ -152,6 +160,10 @@
   }
   function onAddressInput() {
     selectedAddress = null;
+    selectedParcel = null;
+    parcelButton.disabled = true;
+    parcelButton.hidden = true;
+    parcelSelectedLabel.hidden = true;
     addressSelected.hidden = true;
     cancelSearch();
     const query = addressQuery.value.trim().replace(/\s+/g,' ');
@@ -214,6 +226,12 @@
           type.textContent = item.equipmentType;
           article.append(type);
         }
+        if (kind === 'address' && item.parcel?.propertyLabel) {
+          const parcel = document.createElement('span');
+          parcel.className = 'project-item-parcel';
+          parcel.textContent = 'Tomt: ' + item.parcel.propertyLabel;
+          article.append(parcel);
+        }
         if (Number.isFinite(item.latitude) && Number.isFinite(item.longitude)) {
           const location = document.createElement('span');
           location.className = 'project-item-position';
@@ -239,6 +257,11 @@
     currentKind = kind;
     selectedPosition = null;
     selectedAddress = null;
+    selectedParcel = null;
+    selectingParcel = false;
+    parcelButton.hidden = true;
+    parcelButton.disabled = true;
+    parcelSelectedLabel.hidden = true;
     cancelSearch();
     addressQuery.value = '';
     addressSelected.hidden = true;
@@ -272,6 +295,33 @@
   document.getElementById('add-address').addEventListener('click', () => openModal('address'));
   document.getElementById('add-equipment').addEventListener('click', () => openModal('equipment'));
   addressQuery.addEventListener('input', onAddressInput);
+  parcelButton.addEventListener('click', () => {
+    const projectId = selectedProject();
+    if (!projectId || !selectedAddress || currentKind !== 'address') return;
+    const {latitude,longitude} = selectedAddress;
+    selectingParcel = true;
+    dialog.close();
+    window.dispatchEvent(new CustomEvent('fiberapp:planner-parcel-select-start', {
+      detail:{projectId,latitude,longitude}
+    }));
+  });
+  window.addEventListener('fiberapp:planner-parcel-selected', event => {
+    const detail = event.detail || {};
+    if (!selectingParcel || detail.projectId !== selectedProject() ||
+        !selectedAddress || currentKind !== 'address') return;
+    selectingParcel = false;
+    selectedParcel = detail.parcel;
+    parcelSelectedLabel.textContent = 'Valgt tomt: ' + (selectedParcel.propertyLabel || 'Eiendom');
+    parcelSelectedLabel.hidden = false;
+    dialog.showModal();
+    parcelButton.focus();
+  });
+  window.addEventListener('fiberapp:planner-parcel-cancelled', event => {
+    if (!selectingParcel || event.detail?.projectId !== selectedProject()) return;
+    selectingParcel = false;
+    dialog.showModal();
+    parcelButton.focus();
+  });
   pickLocation.addEventListener('click', () => {
     const projectId = selectedProject();
     if (!projectId || currentKind !== 'equipment') return;
@@ -336,7 +386,8 @@
           addressKey:selectedAddress.addressKey,postcode:selectedAddress.postcode,
           poststed:selectedAddress.poststed,
           latitude:selectedAddress.latitude,longitude:selectedAddress.longitude,
-          addressSource:'Kartverket'
+          addressSource:'Kartverket',
+          ...(selectedParcel ? {parcel:selectedParcel} : {})
         } : (selectedPosition || {})),
       createdAt:new Date().toISOString()
     }];
