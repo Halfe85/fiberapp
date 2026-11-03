@@ -13,8 +13,8 @@
   const workspace = document.getElementById('project-workspace');
   const workspaceTitle = document.getElementById('workspace-title');
   const workspaceDescription = document.getElementById('workspace-description');
-  const workspaceCreated = document.getElementById('workspace-created');
   const backButton = document.getElementById('project-back');
+  const plannerHeader = document.querySelector('.planner-header');
   const warning = document.getElementById('project-error');
   const formError = document.getElementById('project-form-error');
   const title = document.getElementById('project-dialog-title');
@@ -77,13 +77,14 @@
     projectsView.hidden = Boolean(selected);
     workspace.hidden = !selected;
     button.hidden = Boolean(selected);
+    backButton.hidden = !selected;
+    plannerHeader.classList.toggle('project-open', Boolean(selected));
     document.getElementById('main').setAttribute('aria-label', selected ? selected.name : 'Prosjekter');
     document.title = selected ? selected.name + ' | Fiber Planner' : 'Fiber Planner | Fiberapp';
     if (!selected) return;
     workspaceTitle.textContent = selected.name;
     workspaceDescription.textContent = selected.description || '';
     workspaceDescription.hidden = !selected.description;
-    workspaceCreated.textContent = 'Opprettet ' + new Date(selected.createdAt).toLocaleDateString('nb-NO');
   }
   function openProject(id) {
     if (!projects.some(p => p.id === id)) return;
@@ -92,7 +93,7 @@
     history.pushState(null, '', url);
     showSelectedProject();
     document.getElementById('main').scrollTop = 0;
-    backButton.focus();
+    workspaceTitle.focus({preventScroll:true});
   }
   function backToProjects() {
     const url = new URL(location.href);

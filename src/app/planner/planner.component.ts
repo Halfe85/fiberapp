@@ -68,19 +68,10 @@ const STORAGE_KEY='fiberapp.planner.projects.v1';
   </section>
   <section class="page planner-workspace" *ngIf="activeProject as current"
            aria-labelledby="ng-workspace-title">
-    <button type="button" class="project-back" (click)="backToProjects()">
-      <span aria-hidden="true">←</span> Prosjekter
-    </button>
     <div class="workspace-heading">
-      <p class="workspace-label">Prosjekt</p>
       <h2 id="ng-workspace-title">{{current.name}}</h2>
       <p class="workspace-description" *ngIf="current.description">{{current.description}}</p>
-      <p class="workspace-date">Opprettet {{formatDate(current.createdAt)}}</p>
     </div>
-    <section class="workspace-section" aria-labelledby="ng-workspace-overview-title">
-      <h3 id="ng-workspace-overview-title">Prosjektoversikt</h3>
-      <p>Prosjektet er åpnet. Her bygger vi videre med anleggsdata i neste steg.</p>
-    </section>
   </section>
   <div class="planner-modal-backdrop" *ngIf="ui.createOpen()" (click)="close()">
     <section class="planner-modal" role="dialog" aria-modal="true"
@@ -190,10 +181,6 @@ export class PlannerComponent implements OnInit,OnDestroy {
     this.openProjectId=null;
     void this.router.navigate([],{relativeTo:this.route,
       queryParams:{project:item.id},queryParamsHandling:'merge'});
-  }
-  backToProjects():void{
-    void this.router.navigate([],{relativeTo:this.route,
-      queryParams:{project:null},queryParamsHandling:'merge'});
   }
   onProjectPointerDown(event:PointerEvent,id:string):void{
     this.swipeConsumedId=null;
