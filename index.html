@@ -1,13 +1,101 @@
-<!doctype html><html lang="no"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#f4f7fb"><title>Fiberapp – fiberverktøy</title><style>
-:root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#f4f7fb;color:#15283d}
-*{box-sizing:border-box}body{margin:0;min-height:100dvh;display:flex;flex-direction:column}a{color:inherit;text-decoration:none}
-header{background:#fff;border-bottom:1px solid #e0e9f2}.shell{max-width:1100px;margin:auto;padding:20px}
-.brand{font-size:20px;font-weight:900;letter-spacing:.05em}.brand span{color:#1d6fa8}
-main{width:100%;max-width:1100px;margin:auto;flex:1;display:flex;align-items:center;padding:45px 20px 70px}h1{font-size:clamp(36px,6vw,60px);letter-spacing:-.04em;margin:6px 0 12px}
-p{color:#647991;line-height:1.55}.eyebrow{font-size:11px;font-weight:800;letter-spacing:.13em;color:#26679f}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;width:100%}
-.tile{display:flex;flex-direction:column;border:1px solid #d8e4ef;background:white;padding:30px;border-radius:19px;min-height:260px;box-shadow:0 12px 30px #23476a10}
-.tile:hover{border-color:#8ab7db}.num{display:grid;place-items:center;background:#e8f3fc;color:#185a90;border-radius:12px;width:48px;height:48px;font-weight:800}
-.tile strong{font-size:28px;margin-top:25px}.tile p{font-size:15px;margin:9px 0}.link{margin-top:auto;padding-top:20px;font-size:14px;font-weight:800;color:#145f98}.bottom-bar{background:#edf4fb;border-top:1px solid #d4e1ee}.bottom-bar .shell{padding:25px 20px}.bottom-bar h1{font-size:clamp(20px,3vw,32px);margin:0;line-height:1.3}
-@media(max-width:650px){main{padding:34px 14px 54px}.grid{grid-template-columns:1fr}.tile{min-height:228px;padding:24px}.tile strong{margin-top:20px}}
-</style></head><body><header><div class="shell"><a class="brand" href="./">FIBER<span>APP</span></a></div></header><main><div class="grid"><a class="tile" href="./finder/"><span class="num">01</span><strong>Fiberfinder</strong><p>Finn rørnummer, fiberfarge og posisjon fra fibernummeret.</p><span class="link">Åpne Fiberfinder →</span></a><a class="tile" href="./planner/"><span class="num">02</span><strong>Fiber Planner</strong><p>Prosjekter boligblokker, oppganger, leiligheter og fiberforbindelser.</p><span class="link">Åpne Fiber Planner →</span></a></div></main><footer class="bottom-bar"><div class="shell"><h1>Fiberverktøy samlet på ett sted.</h1></div></footer></body></html>
+<!doctype html>
+<html lang="no">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f4f7fb">
+  <title>Fiberapp – fiberverktøy</title>
+  <style>
+:root {
+  font-family: system-ui,-apple-system,"Segoe UI",sans-serif;
+  color:#172b41;background:#f4f7fb;
+  -webkit-text-size-adjust:100%;
+}
+*{box-sizing:border-box}
+html{min-width:280px}
+body{margin:0;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column}
+a{color:inherit;text-decoration:none}
+a:focus-visible{outline:3px solid #216fae;outline-offset:4px}
+.site-header{background:#fff;border-bottom:1px solid #dce7f1}
+.container{width:100%;max-width:1100px;margin-inline:auto;padding-inline:20px}
+.site-header .container{min-height:64px;display:flex;align-items:center}
+.brand{display:inline-flex;align-items:center;min-height:44px;font-size:20px;font-weight:900;letter-spacing:.05em;color:#17344f}
+.brand span{color:#1d6fa8}
+.landing-main{width:100%;max-width:1100px;flex:1;display:flex;align-items:center;margin-inline:auto;padding:40px 20px}
+.tool-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;width:100%}
+.tool-card{
+  min-width:0;min-height:206px;display:flex;flex-direction:column;
+  border:1px solid #d8e4ef;background:#fff;border-radius:18px;
+  padding:24px;box-shadow:0 8px 24px rgba(19,52,84,.07);
+  transition:border-color .15s,box-shadow .15s,transform .15s;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;
+}
+.tool-card:focus-visible{outline:3px solid #216fae;outline-offset:3px}
+.tool-card:hover{border-color:#a6c5df}
+.tool-card:active{background:#f9fcff;transform:scale(.995)}
+.card-number{display:grid;place-items:center;width:44px;height:44px;flex:none;background:#e7f2fb;color:#145988;border-radius:12px;font-size:15px;font-weight:850}
+.card-title{display:block;margin:17px 0 0;font-size:clamp(23px,5vw,28px);font-weight:800;letter-spacing:-.025em;line-height:1.2}
+.card-description{display:block;color:#60748b;font-size:15px;line-height:1.5;margin:8px 0 0;overflow-wrap:anywhere}
+.card-action{display:inline-flex;gap:9px;align-items:center;margin-top:auto;padding-top:19px;font-size:15px;font-weight:800;color:#155f9b;min-height:44px}
+.card-action .arrow{font-size:19px}
+.bottom-bar{background:#edf4fb;border-top:1px solid #d4e1ee}
+.bottom-bar .container{padding-block:20px}
+.bottom-bar h1{margin:0;font-size:clamp(19px,3vw,30px);font-weight:800;letter-spacing:-.025em;line-height:1.32;color:#172b41}
+@media(min-width:700px){
+  .tool-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+  .tool-card{min-height:284px;padding:32px;border-radius:20px}
+  .card-title{margin-top:23px}
+  .card-action{padding-top:28px}
+}
+@media(max-width:699px){
+  .container{padding-inline:max(16px,env(safe-area-inset-left,0px)) max(16px,env(safe-area-inset-right,0px))}
+  .site-header .container{min-height:60px;padding-top:env(safe-area-inset-top,0px)}
+  .landing-main{padding:24px 16px 30px;align-items:center}
+  .tool-grid{gap:12px}
+  .tool-card{min-height:192px;padding:20px}
+  .card-title{font-size:24px;margin-top:14px}
+  .card-description{font-size:14px}
+  .card-action{padding-top:10px;font-size:14px}
+  .bottom-bar .container{padding-block:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+  .bottom-bar h1{font-size:clamp(18px,5vw,23px)}
+}
+@media(max-width:350px){
+  .landing-main{padding:16px 12px 22px}
+  .tool-card{padding:17px;min-height:184px}
+  .card-description{font-size:13.5px}
+  .card-title{font-size:22px}
+}
+@media(max-height:680px) and (max-width:699px){
+  .landing-main{align-items:flex-start}
+  .tool-card{min-height:176px}
+}
+@media(prefers-reduced-motion:reduce){
+  .tool-card{transition:none}
+}
+</style>
+</head>
+<body>
+  <header class="site-header"><div class="container">
+    <a class="brand" href="./" aria-label="Fiberapp forside">FIBER<span>APP</span></a>
+  </div></header>
+  <main class="landing-main" id="main">
+    <nav class="tool-grid" aria-label="Velg fiberverktøy">
+      <a class="tool-card" href="./finder/">
+        <span class="card-number" aria-hidden="true">01</span>
+        <span class="card-title">Fiberfinder</span>
+        <span class="card-description">Finn rørnummer, fiberfarge og posisjon fra fibernummeret.</span>
+        <span class="card-action">Åpne Fiberfinder <span class="arrow" aria-hidden="true">→</span></span>
+      </a>
+      <a class="tool-card" href="./planner/">
+        <span class="card-number" aria-hidden="true">02</span>
+        <span class="card-title">Fiber Planner</span>
+        <span class="card-description">Prosjekter boligblokker, oppganger, leiligheter og fiberforbindelser.</span>
+        <span class="card-action">Åpne Fiber Planner <span class="arrow" aria-hidden="true">→</span></span>
+      </a>
+    </nav>
+  </main>
+  <footer class="bottom-bar"><div class="container">
+    <h1>Fiberverktøy samlet på ett sted.</h1>
+  </div></footer>
+</body>
+</html>
