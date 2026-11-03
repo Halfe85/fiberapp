@@ -475,3 +475,29 @@
   margin:8px 0 0;line-height:1.5;color:#344b63
 }
 .project-address-edit-dialog .address-delete-confirmation p strong{overflow-wrap:anywhere}
+
+/* Clicking a project building/parcel highlights the linked address row. */
+.project-item-address.is-selected{
+  border-color:#2b80b6;
+  background:#e7f3fd;
+  box-shadow:inset 3px 0 0 #1c7ab3;
+}
+.project-item-address.is-selected > .project-item-focus:hover{
+  background:#dcecf9;
+}
+.map-address-choice{
+  display:block;
+  width:100%;
+  margin-top:5px;
+  border:0;
+  border-radius:5px;
+  padding:7px 9px;
+  background:#edf4f9;
+  color:#173d58;
+  font:inherit;
+  text-align:left;
+  cursor:pointer;
+}
+.map-address-choice:hover,.map-address-choice:focus-visible{
+  background:#d4e9f6;
+}

@@ -60,6 +60,22 @@
   let searchTimer = null;
   let searchController = null;
   let canSave = true;
+  let activeAddressId=null;
+  let lastAddressProjectId=null;
+  function selectAddressRow(projectId,itemId,scroll=false){
+    if(!projectId || projectId!==selectedProject() ||
+       !rows.some(item=>item.projectId===projectId &&
+         item.kind==='address' && item.id===itemId))return;
+    activeAddressId=itemId;
+    const addressRows=sections.address.list.children;
+    for(const element of addressRows){
+      const selected=element.dataset.addressId===itemId;
+      element.classList.toggle('is-selected',selected);
+      const button=element.querySelector('.project-item-focus');
+      if(button)button.setAttribute('aria-pressed',String(selected));
+      if(selected && scroll)element.scrollIntoView?.({behavior:'smooth',block:'nearest'});
+    }
+  }
   let editReturnFocus = null;
   let editActiveRow = null;
   let editOpenedByPointer = false;
@@ -251,6 +267,12 @@
   }
   function render() {
     currentProjectId = selectedProject();
+    if(currentProjectId!==lastAddressProjectId){
+      activeAddressId=null;
+      lastAddressProjectId=currentProjectId;
+    }
+    if(activeAddressId && !rows.some(item=>item.projectId===currentProjectId &&
+        item.kind==='address' && item.id===activeAddressId))activeAddressId=null;
     closeMenu();
     if (!currentProjectId && dialog.open) dialog.close();
     if (editDialog?.open && (!currentProjectId ||
@@ -267,6 +289,10 @@
       for (const item of found) {
         const article = document.createElement('article');
         article.className = kind === 'address' ? 'project-item project-item-address' : 'project-item';
+        if(kind==='address'){
+          article.dataset.addressId=item.id;
+          article.classList.toggle('is-selected',item.id===activeAddressId);
+        }
         const mappedAddress = kind === 'address' &&
           Number.isFinite(item.latitude) && Number.isFinite(item.longitude) &&
           Math.abs(item.latitude) <= 90 && Math.abs(item.longitude) <= 180;
@@ -275,7 +301,9 @@
           content.type = 'button';
           content.className = 'project-item-focus';
           content.setAttribute('aria-label', 'Vis ' + item.name + ' på kartet');
+          content.setAttribute('aria-pressed',String(item.id===activeAddressId));
           content.addEventListener('click', () => {
+            selectAddressRow(item.projectId,item.id);
             window.dispatchEvent(new CustomEvent('fiberapp:planner-address-focus', {
               detail:{projectId:item.projectId,itemId:item.id}
             }));
@@ -381,6 +409,10 @@
   render();
   window.addEventListener('fiberapp:planner-project-changed', render);
   window.addEventListener('popstate', render);
+  window.addEventListener('fiberapp:planner-main-address-selected',event=>{
+    const {projectId,itemId}=event.detail || {};
+    selectAddressRow(projectId,itemId,true);
+  });
 
   toggle.addEventListener('click', () => {
     if (!canSave || !selectedProject()) return;

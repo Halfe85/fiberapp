@@ -31,6 +31,8 @@
   let ready=false;
   let postcodeRequest=0;
   let lastAddressSignature='[]';
+  let selectedAddressId=null;
+  const polygonGroups=[];
   const postcodeCache=new Map();
 
   function loadItems(){
@@ -144,44 +146,104 @@
     wrap.append(category);
     return wrap;
   }
+  function polygonStyle(item,selected=false){
+    const building=item.area?.kind==='building';
+    return {
+      color:selected?'#ed7116':(building?'#bf711b':'#267e52'),
+      weight:selected?5:3,
+      fillColor:selected?'#ffca7d':(building?'#edab62':'#5eaa7e'),
+      fillOpacity:selected?.43:.18
+    };
+  }
+  function highlightAddress(){
+    for(const group of polygonGroups){
+      const selected=group.items.some(item=>item.id===selectedAddressId);
+      for(const path of group.paths){
+        if(typeof path.setStyle==='function')path.setStyle(polygonStyle(group.items[0],selected));
+      }
+    }
+  }
+  function chooseAddressFromMap(item){
+    const projectId=getProjectId();
+    if(!projectId || item.projectId!==projectId || choosing || selectingParcel)return;
+    if(!loadItems().some(row=>row && row.id===item.id &&
+         row.projectId===projectId && row.kind==='address'))return;
+    selectedAddressId=item.id;
+    highlightAddress();
+    message.textContent='Valgt adresse: '+item.name+'.';
+    window.dispatchEvent(new CustomEvent('fiberapp:planner-main-address-selected',{
+      detail:{projectId,itemId:item.id}
+    }));
+  }
   function updatePins(fit=false){
     if(!map || !pins)return;
     pins.clearLayers();
-    if(savedParcels)savedParcels.clearLayers();
-    const visibleParcels=new Set();
+    savedParcels?.clearLayers();
+    polygonGroups.length=0;
     const id=getProjectId();
     if(!id)return;
+    const records=loadItems().filter(item=>item && item.projectId===id && valid(item));
+    if(selectedAddressId && !records.some(item=>
+        item.kind==='address' && item.id===selectedAddressId))selectedAddressId=null;
     const bounds=[];
-    for(const item of loadItems()){
-      if(!item || item.projectId!==id || !valid(item))continue;
-      const color=item.kind==='address'?'#1a6dab':'#d47c16';
-      const marker=window.L.circleMarker([item.latitude,item.longitude],{
-        radius:8,color:'#ffffff',weight:2,fillColor:color,fillOpacity:1
-      });
-      marker.bindPopup(popupNode(item));
-      marker.addTo(pins);
+    const grouped=new Map();
+    for(const item of records){
       bounds.push([item.latitude,item.longitude]);
-      const parcel=item.area || item.parcel;
-      if(item.kind==='address' && savedParcels && parcel?.geometry &&
-         ['Polygon','MultiPolygon'].includes(parcel.geometry.type)) {
-        const key=parcel.propertyId || JSON.stringify(parcel.geometry);
-        if(!visibleParcels.has(key)){
-          visibleParcels.add(key);
-          try{
-            const outline=window.L.geoJSON({
-              type:'Feature',properties:{},geometry:parcel.geometry
-            },{style:{
-              color:item.area?.kind==='building'?'#bf711b':'#267e52',weight:3,
-              fillColor:item.area?.kind==='building'?'#edab62':'#5eaa7e',
-              fillOpacity:0.18,interactive:false
-            }});
-            outline.addTo(savedParcels);
-          }catch{/* An outdated or invalid polygon must not break the map. */}
-        }
+      // Addresses are represented by their building/property polygon only.
+      // Equipment keeps its independent point marker.
+      if(item.kind==='equipment'){
+        window.L.circleMarker([item.latitude,item.longitude],{
+          radius:8,color:'#ffffff',weight:2,fillColor:'#d47c16',fillOpacity:1
+        }).bindPopup(popupNode(item)).addTo(pins);
       }
+      const area=item.area || item.parcel; // also support older saved projects
+      if(item.kind!=='address' || !area?.geometry ||
+         !['Polygon','MultiPolygon'].includes(area.geometry.type) ||
+         !Array.isArray(area.geometry.coordinates))continue;
+      try{
+        // One visible shape for identical footprints. If multiple addresses share
+        // it, let the user choose which one rather than arbitrarily selecting one.
+        const key=JSON.stringify(area.geometry);
+        if(!grouped.has(key))grouped.set(key,{items:[],geometry:area.geometry,paths:[]});
+        grouped.get(key).items.push(item);
+      }catch{/* Malformed geometry must not break equipment pins. */}
     }
-    // Only use marker bounds when there is no valid postcode (or lookup fails).
-    // Otherwise this would overwrite the postcode zoom on project re-entry.
+    for(const group of grouped.values()){
+      try{
+        const L=window.L;
+        const layer=L.geoJSON({type:'Feature',properties:{},geometry:group.geometry},{
+          style:polygonStyle(group.items[0],group.items.some(i=>i.id===selectedAddressId))
+        });
+        layer.eachLayer(path=>{
+          group.paths.push(path);
+          if(group.items.length===1){
+            path.on('click',()=>chooseAddressFromMap(group.items[0]));
+            if(typeof path.bindTooltip==='function')
+              path.bindTooltip(group.items[0].name,{sticky:true});
+          }else{
+            const list=document.createElement('div');
+            const heading=document.createElement('strong');
+            heading.textContent='Velg adresse';
+            list.append(heading);
+            for(const item of group.items){
+              const button=document.createElement('button');
+              button.type='button';
+              button.className='map-address-choice';
+              button.textContent=item.name;
+              button.addEventListener('click',event=>{
+                event.stopPropagation();
+                chooseAddressFromMap(item);
+                map.closePopup?.();
+              });
+              list.append(button);
+            }
+            path.bindPopup(list);
+          }
+        });
+        layer.addTo(savedParcels);
+        polygonGroups.push(group);
+      }catch{/* Ignore malformed outlines and keep the rest of the map functional. */}
+    }
     if(fit){
       if(bounds.length===1)map.setView(bounds[0],14);
       else if(bounds.length>1)map.fitBounds(bounds,{padding:[40,40],maxZoom:15});
@@ -220,6 +282,7 @@
     updatePins(false);
   }
   function updateProject(){
+    selectedAddressId=null;
     choosing=false;
     stopParcelSelection(false);
     element.classList.remove('picking-position');
@@ -345,6 +408,8 @@
     const address=loadItems().find(item=>item && item.id===itemId &&
       item.projectId===projectId && item.kind==='address' && valid(item));
     if(!address)return;
+    selectedAddressId=address.id;
+    highlightAddress();
     ++postcodeRequest; // An in-flight postcode lookup must not override manual focus.
     map.invalidateSize({pan:false});
     const center=[address.latitude,address.longitude];
