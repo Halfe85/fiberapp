@@ -1,5 +1,5 @@
 import {CommonModule} from '@angular/common';
-import {Component,ElementRef,HostListener,Input,OnDestroy,OnInit,ViewChild} from '@angular/core';
+import {Component,ElementRef,HostListener,Input,OnChanges,OnDestroy,OnInit,SimpleChanges,ViewChild} from '@angular/core';
 import {FormsModule} from '@angular/forms';
 import {PlannerUiService} from './planner-ui.service';
 import {AddressAreaMapComponent,SelectedArea} from './address-area-map.component';
@@ -60,6 +60,8 @@ const ADDRESS_API='https://api.kartverket.no/adresser/v1/sok';
         <h3>Adresser</h3>
         <div class="planner-item-list">
           <article class="planner-item-row planner-address-row" *ngFor="let item of addressItems; trackBy:trackId"
+                   [attr.data-address-id]="item.id"
+                   [class.is-selected]="selectedAddressId===item.id"
                    [class.address-tool-modal-open]="editingAddress?.id===item.id"
                    [class.address-tool-dismissed]="dismissedAddressTools.has(item.id)"
                    (pointerenter)="onAddressRowPointerLeave(item)"
@@ -67,6 +69,7 @@ const ADDRESS_API='https://api.kartverket.no/adresser/v1/sok';
             <button type="button" class="planner-address-focus"
                     [disabled]="!hasAddressLocation(item)"
                     [attr.aria-label]="'Vis '+item.name+' på kartet'"
+                    [attr.aria-pressed]="selectedAddressId===item.id"
                     (click)="focusAddress(item)">
               <strong>{{item.name}}</strong>
               <span class="project-item-parcel" *ngIf="item.area || item.parcel">
@@ -205,9 +208,10 @@ const ADDRESS_API='https://api.kartverket.no/adresser/v1/sok';
     </div>
   `
 })
-export class ProjectItemsComponent implements OnInit,OnDestroy {
+export class ProjectItemsComponent implements OnInit,OnChanges,OnDestroy {
   @Input({required:true}) projectId!:string;
   items:ProjectItem[]=[];
+  selectedAddressId:string|null=null;
   editingAddress:ProjectItem|null=null;
   confirmingAddressDelete=false;
   deleteAddressError='';
@@ -404,6 +408,7 @@ export class ProjectItemsComponent implements OnInit,OnDestroy {
         (item as Partial<ProjectItem>).kind==='address'
       ));
       localStorage.setItem(KEY,JSON.stringify(next));
+      if(this.selectedAddressId===address.id)this.selectedAddressId=null;
       this.items=next.filter((item:unknown):item is ProjectItem=>{
         if(!item || typeof item!=='object')return false;
         const candidate=item as Partial<ProjectItem>;
@@ -435,9 +440,29 @@ export class ProjectItemsComponent implements OnInit,OnDestroy {
   }
   focusAddress(item:ProjectItem):void {
     if(item.projectId!==this.projectId || !this.hasAddressLocation(item))return;
+    this.selectedAddressId=item.id;
     window.dispatchEvent(new CustomEvent('fiberapp:planner-address-focus',{
       detail:{projectId:this.projectId,itemId:item.id}
     }));
+  }
+  @HostListener('window:fiberapp:planner-main-address-selected',['$event'])
+  onMainMapAddressSelected(event:Event):void {
+    const detail=(event as CustomEvent<{projectId:string;itemId:string}>).detail;
+    if(!detail || detail.projectId!==this.projectId ||
+       !this.items.some(item=>item.projectId===this.projectId &&
+         item.kind==='address' && item.id===detail.itemId))return;
+    this.selectedAddressId=detail.itemId;
+    // The selected row may be below the fold in long project lists.
+    const rows=document.querySelectorAll<HTMLElement>('.planner-address-row');
+    for(const row of rows){
+      if(row.dataset['addressId']===detail.itemId){
+        row.scrollIntoView?.({behavior:'smooth',block:'nearest'});
+        break;
+      }
+    }
+  }
+  ngOnChanges(changes:SimpleChanges):void {
+    if(changes['projectId'])this.selectedAddressId=null;
   }
   ngOnInit():void{
     try{
@@ -464,6 +489,7 @@ export class ProjectItemsComponent implements OnInit,OnDestroy {
     this.editorTrigger=null;
     this.editorOpenedByPointer=false;
     this.dismissedAddressTools.clear();
+    this.selectedAddressId=null;
     this.ui.closeItem();
   }
   onAreaChanged(area:SelectedArea|null):void {

@@ -51,11 +51,14 @@ export class ProjectMapComponent implements AfterViewInit,OnChanges,OnDestroy {
   private destroyed=false;
   private postcodeRequest=0;
   private lastAddressSignature='[]';
+  private selectedAddressId:string|null=null;
+  private readonly polygonGroups:Array<{items:ProjectMapItem[];paths:any[]}>=[]; 
   private readonly postcodeCache=new Map<string,number[][]>();
   private readonly instruction='Naviger i kartet. Plasser adresser eller utstyr via + i headeren.';
   private onScriptLoad=()=>this.createMap();
 
   ngOnChanges(changes:SimpleChanges):void {
+    if(changes['projectId'])this.selectedAddressId=null;
     if(this.map && (changes['postcode'] || changes['projectId'])){
       this.scheduleViewport();
     }
@@ -220,11 +223,49 @@ export class ProjectMapComponent implements AfterViewInit,OnChanges,OnDestroy {
         ' hos Kartverket. Kartet kan brukes manuelt.';
     }
   }
+  private polygonStyle(item:ProjectMapItem,selected=false):{
+    color:string;weight:number;fillColor:string;fillOpacity:number
+  } {
+    const building=item.area?.kind==='building';
+    return {
+      color:selected?'#ed7116':(building?'#bf711b':'#267e52'),
+      weight:selected?5:3,
+      fillColor:selected?'#ffca7d':(building?'#edab62':'#5eaa7e'),
+      fillOpacity:selected?.43:.18
+    };
+  }
+
+  private highlightAddress():void {
+    for(const group of this.polygonGroups){
+      const selected=group.items.some(item=>item.id===this.selectedAddressId);
+      for(const path of group.paths){
+        if(typeof path.setStyle==='function')
+          path.setStyle(this.polygonStyle(group.items[0],selected));
+      }
+    }
+  }
+  private chooseAddressOnMap(item:ProjectMapItem):void {
+    if(this.destroyed || this.picking || this.selectingParcel ||
+       item.projectId!==this.projectId || !this.map)return;
+    let parsed:unknown;
+    try{
+      const raw=localStorage.getItem(ITEM_KEY);
+      parsed=raw?JSON.parse(raw):[];
+    }catch{return;}
+    if(!Array.isArray(parsed) || !parsed.some((v:ProjectMapItem)=>v &&
+       v.id===item.id && v.projectId===this.projectId && v.kind==='address'))return;
+    this.selectedAddressId=item.id;
+    this.highlightAddress();
+    this.message.nativeElement.textContent='Valgt adresse: '+item.name+'.';
+    window.dispatchEvent(new CustomEvent('fiberapp:planner-main-address-selected',{
+      detail:{projectId:this.projectId,itemId:item.id}
+    }));
+  }
   private refreshPins(fit:boolean):void {
     if(!this.map || !this.pins)return;
     this.pins.clearLayers();
     this.savedParcels?.clearLayers();
-    const parcelKeys=new Set<string>();
+    this.polygonGroups.length=0;
     let parsed:unknown=[];
     try {
       const raw=localStorage.getItem(ITEM_KEY);
@@ -235,41 +276,81 @@ export class ProjectMapComponent implements AfterViewInit,OnChanges,OnDestroy {
     }
     if(!Array.isArray(parsed))return;
     const L=(window as any).L;
+    const records=(parsed as ProjectMapItem[]).filter(value=>value &&
+      value.projectId===this.projectId && Number.isFinite(value.latitude) &&
+      Number.isFinite(value.longitude) &&
+      Math.abs(value.latitude as number)<=90 && Math.abs(value.longitude as number)<=180);
+    if(this.selectedAddressId && !records.some(value=>
+       value.kind==='address' && value.id===this.selectedAddressId))this.selectedAddressId=null;
     const bounds:number[][]=[];
-    for(const value of parsed as ProjectMapItem[]){
-      if(!value || value.projectId!==this.projectId ||
-         !Number.isFinite(value.latitude) || !Number.isFinite(value.longitude))continue;
+    const grouped=new Map<string,{
+      items:ProjectMapItem[];
+      geometry:{type:'Polygon'|'MultiPolygon';coordinates:unknown[]};
+      paths:any[];
+    }>();
+    for(const value of records){
       const latitude=value.latitude as number,longitude=value.longitude as number;
-      if(Math.abs(latitude)>90 || Math.abs(longitude)>180)continue;
-      const dot=L.circleMarker([latitude,longitude],{
-        radius:8,color:'#fff',weight:2,
-        fillColor:value.kind==='address'?'#1a6dab':'#d47c16',fillOpacity:1
-      });
-      const popup=document.createElement('div');
-      const label=document.createElement('strong');
-      label.textContent=value.name;
-      const type=document.createElement('p');
-      type.textContent=value.kind==='address'?'Adresse':'Utstyr';
-      popup.append(label,type);
-      dot.bindPopup(popup).addTo(this.pins);
       bounds.push([latitude,longitude]);
-      const parcel=value.area || value.parcel;
-      if(value.kind==='address' && parcel?.geometry &&
-         ['Polygon','MultiPolygon'].includes(parcel.geometry.type)){
-        const key=parcel.propertyId || JSON.stringify(parcel.geometry);
-        if(!parcelKeys.has(key)){
-          parcelKeys.add(key);
-          try{
-            L.geoJSON({type:'Feature',properties:{},geometry:parcel.geometry},{
-              style:{
-                color:value.area?.kind==='building'?'#bf711b':'#267e52',weight:3,
-                fillColor:value.area?.kind==='building'?'#edab62':'#5eaa7e',
-                fillOpacity:.18,interactive:false
-              }
-            }).addTo(this.savedParcels);
-          }catch{/* A malformed saved polygon cannot prevent map loading. */}
-        }
+      // Only equipment has a point marker on the main project map.
+      if(value.kind==='equipment'){
+        const dot=L.circleMarker([latitude,longitude],{
+          radius:8,color:'#fff',weight:2,fillColor:'#d47c16',fillOpacity:1
+        });
+        const popup=document.createElement('div');
+        const label=document.createElement('strong');
+        label.textContent=value.name;
+        const type=document.createElement('p');
+        type.textContent='Utstyr';
+        popup.append(label,type);
+        dot.bindPopup(popup).addTo(this.pins);
       }
+      const area=value.area || value.parcel; // Legacy area records also work.
+      if(value.kind!=='address' || !area?.geometry ||
+         !['Polygon','MultiPolygon'].includes(area.geometry.type) ||
+         !Array.isArray(area.geometry.coordinates))continue;
+      try{
+        const key=JSON.stringify(area.geometry);
+        if(!grouped.has(key))grouped.set(key,{
+          items:[],geometry:area.geometry,paths:[]
+        });
+        grouped.get(key)!.items.push(value);
+      }catch{/* Skip malformed polygons, preserve remaining project objects. */}
+    }
+    for(const group of grouped.values()){
+      try{
+        const layer=L.geoJSON({
+          type:'Feature',properties:{},geometry:group.geometry
+        },{style:this.polygonStyle(group.items[0],
+           group.items.some(i=>i.id===this.selectedAddressId))});
+        layer.eachLayer((path:any)=>{
+          group.paths.push(path);
+          if(group.items.length===1){
+            path.on('click',()=>this.chooseAddressOnMap(group.items[0]));
+            if(typeof path.bindTooltip==='function')
+              path.bindTooltip(group.items[0].name,{sticky:true});
+          }else{
+            const content=document.createElement('div');
+            const title=document.createElement('strong');
+            title.textContent='Velg adresse';
+            content.append(title);
+            for(const item of group.items){
+              const button=document.createElement('button');
+              button.type='button';
+              button.className='map-address-choice';
+              button.textContent=item.name;
+              button.addEventListener('click',event=>{
+                event.stopPropagation();
+                this.chooseAddressOnMap(item);
+                this.map.closePopup?.();
+              });
+              content.append(button);
+            }
+            path.bindPopup(content);
+          }
+        });
+        layer.addTo(this.savedParcels);
+        this.polygonGroups.push(group);
+      }catch{/* A bad saved polygon must not block map rendering. */}
     }
     if(fit){
       if(bounds.length===1)this.map.setView(bounds[0],14);
@@ -398,6 +479,8 @@ export class ProjectMapComponent implements AfterViewInit,OnChanges,OnDestroy {
       Number.isFinite(item.longitude) &&
       Math.abs(item.latitude as number)<=90 && Math.abs(item.longitude as number)<=180);
     if(!address)return;
+    this.selectedAddressId=address.id;
+    this.highlightAddress();
     ++this.postcodeRequest;
     this.map.invalidateSize({pan:false});
     const center=[address.latitude as number,address.longitude as number];
@@ -433,5 +516,6 @@ export class ProjectMapComponent implements AfterViewInit,OnChanges,OnDestroy {
     }
     this.map?.remove();
     this.map=null;
+    this.polygonGroups.length=0;
   }
 }
