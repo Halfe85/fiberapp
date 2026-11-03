@@ -10,6 +10,9 @@ interface ProjectMapItem {
   longitude?:number;
   parcel?:{propertyId:string;propertyLabel:string;
     geometry:{type:'Polygon'|'MultiPolygon';coordinates:unknown[]}};
+  area?:{kind:'building'|'parcel';source:'manual'|'kartverket';
+    propertyId?:string;propertyLabel?:string;
+    geometry:{type:'Polygon'|'MultiPolygon';coordinates:unknown[]}};
 }
 const ITEM_KEY='fiberapp.planner.items.v1';
 const POSTCODE_API='https://api.kartverket.no/adresser/v1/sok';
@@ -215,7 +218,7 @@ export class ProjectMapComponent implements AfterViewInit,OnChanges,OnDestroy {
       popup.append(label,type);
       dot.bindPopup(popup).addTo(this.pins);
       bounds.push([latitude,longitude]);
-      const parcel=value.parcel;
+      const parcel=value.area || value.parcel;
       if(value.kind==='address' && parcel?.geometry &&
          ['Polygon','MultiPolygon'].includes(parcel.geometry.type)){
         const key=parcel.propertyId || JSON.stringify(parcel.geometry);
@@ -223,8 +226,11 @@ export class ProjectMapComponent implements AfterViewInit,OnChanges,OnDestroy {
           parcelKeys.add(key);
           try{
             L.geoJSON({type:'Feature',properties:{},geometry:parcel.geometry},{
-              style:{color:'#267e52',weight:3,fillColor:'#5eaa7e',
-                fillOpacity:.18,interactive:false}
+              style:{
+                color:value.area?.kind==='building'?'#bf711b':'#267e52',weight:3,
+                fillColor:value.area?.kind==='building'?'#edab62':'#5eaa7e',
+                fillOpacity:.18,interactive:false
+              }
             }).addTo(this.savedParcels);
           }catch{/* A malformed saved polygon cannot prevent map loading. */}
         }

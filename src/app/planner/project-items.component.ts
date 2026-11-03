@@ -2,6 +2,7 @@ import {CommonModule} from '@angular/common';
 import {Component,HostListener,Input,OnDestroy,OnInit} from '@angular/core';
 import {FormsModule} from '@angular/forms';
 import {PlannerUiService} from './planner-ui.service';
+import {AddressAreaMapComponent,SelectedArea} from './address-area-map.component';
 
 type ItemKind='address'|'equipment';
 interface ProjectItem {
@@ -15,7 +16,8 @@ interface ProjectItem {
   postcode?:string;
   poststed?:string;
   addressSource?:string;
-  parcel?:PropertyParcel;
+  parcel?:PropertyParcel; // Older saved records
+  area?:SelectedArea;
   latitude?:number;
   longitude?:number;
   createdAt:string;
@@ -51,7 +53,7 @@ const ADDRESS_API='https://api.kartverket.no/adresser/v1/sok';
 @Component({
   selector:'app-project-items',
   standalone:true,
-  imports:[CommonModule,FormsModule],
+  imports:[CommonModule,FormsModule,AddressAreaMapComponent],
   template:`
     <div class="planner-item-groups" *ngIf="addressItems.length || equipmentItems.length">
       <section class="planner-item-section" *ngIf="addressItems.length">
@@ -59,8 +61,9 @@ const ADDRESS_API='https://api.kartverket.no/adresser/v1/sok';
         <div class="planner-item-list">
           <article class="planner-item-row" *ngFor="let item of addressItems; trackBy:trackId">
             <strong>{{item.name}}</strong>
-            <span class="project-item-parcel" *ngIf="item.parcel?.propertyLabel">
-              Tomt: {{item.parcel?.propertyLabel}}
+            <span class="project-item-parcel" *ngIf="item.area || item.parcel">
+              {{item.area?.kind==='building' ? 'Bygg' : 'Tomt'}}:
+              {{item.area?.propertyLabel || item.parcel?.propertyLabel || 'tegnet område'}}
             </span>
             <p *ngIf="item.note">{{item.note}}</p>
           </article>
@@ -79,13 +82,17 @@ const ADDRESS_API='https://api.kartverket.no/adresser/v1/sok';
     </div>
     <div class="notice error" *ngIf="storageError" role="alert">{{storageError}}</div>
     <div class="planner-modal-backdrop" *ngIf="ui.itemModal()" (click)="close()">
-      <section class="planner-modal planner-item-modal" role="dialog" aria-modal="true"
+      <section class="planner-modal planner-item-modal"
+               [class.address-mode]="ui.itemModal()==='address'"
+               role="dialog" aria-modal="true"
                aria-labelledby="ng-item-dialog-title" (click)="$event.stopPropagation()">
         <div class="dialog-head">
           <h2 id="ng-item-dialog-title">{{ui.itemModal()==='address' ? 'Ny adresse' : 'Nytt utstyr'}}</h2>
           <button type="button" class="close-button" aria-label="Lukk" (click)="close()">×</button>
         </div>
         <form (ngSubmit)="create()">
+          <div class="project-item-body">
+            <div class="project-item-fields">
           <ng-container *ngIf="ui.itemModal()==='address'">
             <label for="ng-address-query">Søk etter vegadresse *</label>
             <input id="ng-address-query" type="search" name="addressQuery" maxlength="120"
@@ -105,10 +112,9 @@ const ADDRESS_API='https://api.kartverket.no/adresser/v1/sok';
             <p class="address-search-selected" *ngIf="selectedAddress">
               Valgt vegadresse: {{selectedAddress.name}}, {{selectedAddress.postcode}}
             </p>
-            <button type="button" class="secondary address-pick-parcel"
-                    *ngIf="selectedAddress" (click)="pickParcel()">Velg tomt i kartet</button>
-            <p class="address-parcel-selected" *ngIf="selectedParcel">
-              Valgt tomt: {{selectedParcel.propertyLabel}}
+            <p class="address-area-selected" *ngIf="selectedArea">
+              {{selectedArea.kind==='building' ? 'Bygg' : 'Tomt'}} valgt
+              {{selectedArea.propertyLabel ? ': '+selectedArea.propertyLabel : ''}}
             </p>
           </ng-container>
           <ng-container *ngIf="ui.itemModal()==='equipment'">
@@ -133,6 +139,11 @@ const ADDRESS_API='https://api.kartverket.no/adresser/v1/sok';
           <label for="ng-item-note">Beskrivelse (valgfritt)</label>
           <textarea id="ng-item-note" name="itemNote" rows="3" maxlength="300"
                     [(ngModel)]="note"></textarea>
+            </div>
+            <app-address-area-map *ngIf="ui.itemModal()==='address'"
+              [address]="selectedAddress"
+              (areaChanged)="onAreaChanged($event)"></app-address-area-map>
+          </div>
           <div class="notice error" *ngIf="modalError" role="alert">{{modalError}}</div>
           <div class="dialog-actions">
             <button type="button" class="secondary" (click)="close()">Avbryt</button>
@@ -159,8 +170,7 @@ export class ProjectItemsComponent implements OnInit,OnDestroy {
   addressStatus='Skriv minst to tegn for å søke i Kartverkets adresseregister.';
   addressChoices:AddressChoice[]=[];
   selectedAddress:AddressChoice|null=null;
-  selectedParcel:PropertyParcel|null=null;
-  pickingParcel=false;
+  selectedArea:SelectedArea|null=null;
   private addressSequence=0;
   private addressTimer:ReturnType<typeof setTimeout>|null=null;
   private addressAbort:AbortController|null=null;
@@ -213,7 +223,7 @@ export class ProjectItemsComponent implements OnInit,OnDestroy {
   }
   onAddressQueryChanged(query:string):void {
     this.selectedAddress=null;
-    this.selectedParcel=null;
+    this.selectedArea=null;
     this.addressChoices=[];
     this.cancelSearch();
     this.addressStatus='Skriv minst to tegn for å søke i Kartverkets adresseregister.';
@@ -262,7 +272,7 @@ export class ProjectItemsComponent implements OnInit,OnDestroy {
   selectAddress(choice:AddressChoice):void {
     this.cancelSearch();
     this.selectedAddress=choice;
-    this.selectedParcel=null;
+    this.selectedArea=null;
     this.addressQuery=choice.name;
     this.addressChoices=[];
     this.addressStatus='';
@@ -301,30 +311,8 @@ export class ProjectItemsComponent implements OnInit,OnDestroy {
     this.cancelSearch();
     this.ui.closeItem();
   }
-  pickParcel():void {
-    if(!this.selectedAddress || !this.projectId || this.ui.itemModal()!=='address')return;
-    const {latitude,longitude}=this.selectedAddress;
-    this.pickingParcel=true;
-    this.ui.closeItem();
-    window.dispatchEvent(new CustomEvent('fiberapp:planner-parcel-select-start',{
-      detail:{projectId:this.projectId,latitude,longitude}
-    }));
-  }
-  @HostListener('window:fiberapp:planner-parcel-selected',['$event'])
-  onParcelSelected(event:Event):void {
-    const detail=(event as CustomEvent<{projectId:string;parcel:PropertyParcel}>).detail;
-    if(!this.pickingParcel || !this.selectedAddress || !detail ||
-       detail.projectId!==this.projectId)return;
-    this.pickingParcel=false;
-    this.selectedParcel=detail.parcel;
-    this.ui.openItem('address');
-  }
-  @HostListener('window:fiberapp:planner-parcel-cancelled',['$event'])
-  onParcelCancelled(event:Event):void {
-    const detail=(event as CustomEvent<{projectId:string}>).detail;
-    if(!this.pickingParcel || detail?.projectId!==this.projectId)return;
-    this.pickingParcel=false;
-    this.ui.openItem('address');
+  onAreaChanged(area:SelectedArea|null):void {
+    this.selectedArea=area;
   }
   pickPosition():void {
     const kind=this.ui.itemModal();
@@ -351,8 +339,7 @@ export class ProjectItemsComponent implements OnInit,OnDestroy {
     this.addressQuery='';
     this.addressChoices=[];
     this.selectedAddress=null;
-    this.selectedParcel=null;
-    this.pickingParcel=false;
+    this.selectedArea=null;
     this.addressStatus='Skriv minst to tegn for å søke i Kartverkets adresseregister.';
     this.name='';
     this.note='';
@@ -394,7 +381,7 @@ export class ProjectItemsComponent implements OnInit,OnDestroy {
           poststed:this.selectedAddress.poststed,
           latitude:this.selectedAddress.latitude,longitude:this.selectedAddress.longitude,
           addressSource:'Kartverket',
-          ...(this.selectedParcel ? {parcel:this.selectedParcel} : {})
+          ...(this.selectedArea ? {area:this.selectedArea} : {})
         }:(this.selectedPosition||{})),
       createdAt:new Date().toISOString()
     }];
