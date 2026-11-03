@@ -523,3 +523,21 @@ app-project-items .project-position-status{font-size:12px;color:#607b90}
 /* Postal code input in new/edit project modal. Keep leading zeros. */
 app-planner #ng-project-postcode{max-width:180px;font-variant-numeric:tabular-nums;letter-spacing:.08em}
 @media(max-width:699px){app-planner #ng-project-postcode{max-width:100%}}
+
+/* Autocomplete for official Kartverket street/house addresses. */
+app-project-items .address-search-scope,
+app-project-items .address-search-status{
+  font-size:12px;line-height:1.45;color:#637e91;margin:0
+}
+app-project-items .address-search-results{list-style:none;margin:0;padding:3px;
+  max-height:240px;overflow-y:auto;border:1px solid #d7e3ec;border-radius:10px;background:#fff}
+app-project-items .address-search-results li+li{border-top:1px solid #ebf1f6}
+app-project-items .address-search-results button{display:flex;flex-direction:column;
+  width:100%;gap:3px;padding:10px 12px;border:0;border-radius:7px;
+  background:transparent;color:#243d55;cursor:pointer;text-align:left;font:inherit}
+app-project-items .address-search-results button:hover,
+app-project-items .address-search-results button:focus-visible{background:#e9f4fc}
+app-project-items .address-search-results button strong{font-size:14px}
+app-project-items .address-search-results button span{font-size:12px;color:#637e91}
+app-project-items .address-search-selected{padding:10px 12px;border-radius:9px;
+  background:#e8f6f0;color:#155b41;font-size:13px;font-weight:650}

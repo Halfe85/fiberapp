@@ -11,11 +11,36 @@ interface ProjectItem {
   name:string;
   note:string;
   equipmentType:string;
+  addressKey?:string;
+  postcode?:string;
+  poststed?:string;
+  addressSource?:string;
   latitude?:number;
   longitude?:number;
   createdAt:string;
 }
+interface KartverketAddress {
+  objtype?:string;
+  adressenavn?:string;
+  adressekode?:number;
+  nummer?:number;
+  bokstav?:string;
+  kommunenummer?:string;
+  postnummer?:string;
+  poststed?:string;
+  representasjonspunkt?:{lat:number;lon:number};
+}
+interface AddressChoice {
+  addressKey:string;
+  name:string;
+  postcode:string;
+  poststed:string;
+  latitude:number;
+  longitude:number;
+}
 const KEY='fiberapp.planner.items.v1';
+const PROJECTS_KEY='fiberapp.planner.projects.v1';
+const ADDRESS_API='https://api.kartverket.no/adresser/v1/sok';
 
 @Component({
   selector:'app-project-items',
@@ -52,10 +77,31 @@ const KEY='fiberapp.planner.items.v1';
           <button type="button" class="close-button" aria-label="Lukk" (click)="close()">×</button>
         </div>
         <form (ngSubmit)="create()">
-          <label for="ng-item-name">{{ui.itemModal()==='address' ? 'Adresse *' : 'Utstyrsnavn / ID *'}}</label>
-          <input id="ng-item-name" type="text" name="itemName" required maxlength="120"
-                 [(ngModel)]="name" autocomplete="off"
-                 [placeholder]="ui.itemModal()==='address' ? 'Gateadresse' : 'F.eks. ODF-01'">
+          <ng-container *ngIf="ui.itemModal()==='address'">
+            <label for="ng-address-query">Søk etter vegadresse *</label>
+            <input id="ng-address-query" type="search" name="addressQuery" maxlength="120"
+                   [(ngModel)]="addressQuery" (ngModelChange)="onAddressQueryChanged($event)"
+                   autocomplete="off" spellcheck="false" placeholder="Skriv gatenavn eller husnummer"
+                   aria-describedby="ng-address-scope ng-address-status">
+            <p id="ng-address-scope" class="address-search-scope">{{addressScope}}</p>
+            <p id="ng-address-status" class="address-search-status" role="status" aria-live="polite">{{addressStatus}}</p>
+            <ul class="address-search-results" *ngIf="addressChoices.length" aria-label="Fysiske vegadresser">
+              <li *ngFor="let choice of addressChoices; trackBy:trackAddress">
+                <button type="button" (click)="selectAddress(choice)">
+                  <strong>{{choice.name}}</strong>
+                  <span>{{choice.postcode}} {{choice.poststed}}</span>
+                </button>
+              </li>
+            </ul>
+            <p class="address-search-selected" *ngIf="selectedAddress">
+              Valgt vegadresse: {{selectedAddress.name}}, {{selectedAddress.postcode}}
+            </p>
+          </ng-container>
+          <ng-container *ngIf="ui.itemModal()==='equipment'">
+            <label for="ng-item-name">Utstyrsnavn / ID *</label>
+            <input id="ng-item-name" type="text" name="itemName" required maxlength="120"
+                   [(ngModel)]="name" autocomplete="off" placeholder="F.eks. ODF-01">
+          </ng-container>
           <ng-container *ngIf="ui.itemModal()==='equipment'">
             <label for="ng-item-type">Utstyrstype</label>
             <select id="ng-item-type" name="itemType" [(ngModel)]="equipmentType">
@@ -66,7 +112,7 @@ const KEY='fiberapp.planner.items.v1';
               <option value="Svitsj">Svitsj</option>
             </select>
           </ng-container>
-          <div class="project-position-picker">
+          <div class="project-position-picker" *ngIf="ui.itemModal()==='equipment'">
             <button type="button" class="secondary" (click)="pickPosition()">Velg posisjon i kartet</button>
             <span class="project-position-status" aria-live="polite">{{positionLabel}}</span>
           </div>
@@ -76,7 +122,10 @@ const KEY='fiberapp.planner.items.v1';
           <div class="notice error" *ngIf="modalError" role="alert">{{modalError}}</div>
           <div class="dialog-actions">
             <button type="button" class="secondary" (click)="close()">Avbryt</button>
-            <button type="submit" [disabled]="!name.trim() || !canSave">Legg til</button>
+            <button type="submit"
+                    [disabled]="!canSave || (ui.itemModal()==='address' ? !selectedAddress : !name.trim())">
+              Legg til
+            </button>
           </div>
         </form>
       </section>
@@ -92,9 +141,115 @@ export class ProjectItemsComponent implements OnInit,OnDestroy {
   name='';
   note='';
   equipmentType='Annet';
+  addressQuery='';
+  addressStatus='Skriv minst to tegn for å søke i Kartverkets adresseregister.';
+  addressChoices:AddressChoice[]=[];
+  selectedAddress:AddressChoice|null=null;
+  private addressSequence=0;
+  private addressTimer:ReturnType<typeof setTimeout>|null=null;
+  private addressAbort:AbortController|null=null;
   selectedPosition:{latitude:number;longitude:number}|null=null;
   pickingKind:ItemKind|null=null;
   constructor(public readonly ui:PlannerUiService){}
+  get projectPostcode():string {
+    try{
+      const projects:unknown=JSON.parse(localStorage.getItem(PROJECTS_KEY)||'[]');
+      if(!Array.isArray(projects))return '';
+      const current=projects.find((p:unknown)=>p!==null && typeof p==='object' &&
+        (p as {id?:string}).id===this.projectId) as {postcode?:unknown}|undefined;
+      return typeof current?.postcode==='string' && /^[0-9]{4}$/.test(current.postcode)
+        ? current.postcode:'';
+    }catch{return '';}
+  }
+  get addressScope():string {
+    const postcode=this.projectPostcode;
+    return postcode
+      ? 'Søker kun i postnummer '+postcode+'. Ingen leilighetsnummer.'
+      : 'Prosjektet mangler postnummer. Søker i hele Norge, uten leilighetsnummer.';
+  }
+  trackAddress(_index:number,address:AddressChoice):string{return address.addressKey;}
+  private cancelSearch():void {
+    this.addressSequence++;
+    if(this.addressTimer!==null)clearTimeout(this.addressTimer);
+    this.addressTimer=null;
+    this.addressAbort?.abort();
+    this.addressAbort=null;
+  }
+  private normalizeAddress(raw:KartverketAddress):AddressChoice|null {
+    if(!raw || raw.objtype!=='Vegadresse' ||
+       typeof raw.adressenavn!=='string' || !Number.isInteger(raw.nummer))return null;
+    const point=raw.representasjonspunkt;
+    if(!point || !Number.isFinite(point.lat) || !Number.isFinite(point.lon) ||
+       Math.abs(point.lat)>90 || Math.abs(point.lon)>180)return null;
+    const road=raw.adressenavn.trim();
+    if(!road)return null;
+    const letter=typeof raw.bokstav==='string'?raw.bokstav.trim():'';
+    const addressKey=[
+      raw.kommunenummer||'',raw.adressekode??raw.adressenavn,raw.nummer??'',
+      letter,raw.postnummer||''
+    ].join('|').toLocaleLowerCase('nb-NO');
+    return {
+      addressKey,name:road+' '+raw.nummer+letter,
+      postcode:typeof raw.postnummer==='string'?raw.postnummer:'',
+      poststed:typeof raw.poststed==='string'?raw.poststed:'',
+      latitude:point.lat,longitude:point.lon
+    };
+  }
+  onAddressQueryChanged(query:string):void {
+    this.selectedAddress=null;
+    this.addressChoices=[];
+    this.cancelSearch();
+    this.addressStatus='Skriv minst to tegn for å søke i Kartverkets adresseregister.';
+    const normalized=query.trim().replace(/\s+/g,' ');
+    if(normalized.length<2 || this.ui.itemModal()!=='address')return;
+    const sequence=this.addressSequence;
+    const projectId=this.projectId;
+    this.addressTimer=setTimeout(()=>{
+      if(sequence===this.addressSequence)void this.searchAddresses(normalized,projectId,sequence);
+    },280);
+  }
+  private async searchAddresses(query:string,projectId:string,sequence:number):Promise<void> {
+    const postcode=this.projectPostcode;
+    const params=new URLSearchParams({
+      sok:query+'*',objtype:'Vegadresse',treffPerSide:'30',side:'0',utkoordsys:'4258'
+    });
+    if(postcode)params.set('postnummer',postcode);
+    const controller=new AbortController();
+    this.addressAbort=controller;
+    this.addressStatus='Søker etter vegadresser …';
+    try{
+      const response=await fetch(ADDRESS_API+'?'+params.toString(),{
+        signal:controller.signal,headers:{Accept:'application/json'}
+      });
+      if(!response.ok)throw new Error('Kartverket API: '+response.status);
+      const data:unknown=await response.json();
+      if(sequence!==this.addressSequence || projectId!==this.projectId ||
+         this.ui.itemModal()!=='address')return;
+      const addresses=(data as {adresser?:KartverketAddress[]})?.adresser;
+      const unique=new Map<string,AddressChoice>();
+      for(const raw of Array.isArray(addresses)?addresses:[]){
+        const candidate=this.normalizeAddress(raw);
+        if(!candidate || unique.has(candidate.addressKey))continue;
+        if(postcode && candidate.postcode!==postcode)continue;
+        unique.set(candidate.addressKey,candidate);
+      }
+      this.addressChoices=[...unique.values()];
+      this.addressStatus=this.addressChoices.length
+        ? 'Velg en adresse fra listen. Viser inntil 30 treff; skriv mer for å snevre inn.'
+        : 'Ingen vegadresser funnet. Kontroller gatenavn og postnummer.';
+    }catch(error:unknown){
+      if(controller.signal.aborted || sequence!==this.addressSequence)return;
+      this.addressStatus='Adressesøket kunne ikke fullføres. Kontroller internett og prøv igjen.';
+    }
+  }
+  selectAddress(choice:AddressChoice):void {
+    this.cancelSearch();
+    this.selectedAddress=choice;
+    this.addressQuery=choice.name;
+    this.addressChoices=[];
+    this.addressStatus='';
+    this.modalError='';
+  }
   get positionLabel():string {
     return this.selectedPosition
       ? 'Posisjon valgt: '+this.selectedPosition.latitude.toFixed(6)+', '+this.selectedPosition.longitude.toFixed(6)
@@ -124,10 +279,13 @@ export class ProjectItemsComponent implements OnInit,OnDestroy {
       this.storageError='Kunne ikke lese lagrede adresser eller utstyr. Data er ikke overskrevet.';
     }
   }
-  ngOnDestroy():void{this.ui.closeItem();}
+  ngOnDestroy():void{
+    this.cancelSearch();
+    this.ui.closeItem();
+  }
   pickPosition():void {
     const kind=this.ui.itemModal();
-    if(!kind || !this.projectId)return;
+    if(kind!=='equipment' || !this.projectId)return;
     this.pickingKind=kind;
     this.ui.closeItem();
     window.dispatchEvent(new CustomEvent('fiberapp:planner-map-select-start',{
@@ -145,7 +303,12 @@ export class ProjectItemsComponent implements OnInit,OnDestroy {
     this.ui.openItem(kind);
   }
   close():void{
+    this.cancelSearch();
     this.ui.closeItem();
+    this.addressQuery='';
+    this.addressChoices=[];
+    this.selectedAddress=null;
+    this.addressStatus='Skriv minst to tegn for å søke i Kartverkets adresseregister.';
     this.name='';
     this.note='';
     this.equipmentType='Annet';
@@ -158,10 +321,21 @@ export class ProjectItemsComponent implements OnInit,OnDestroy {
   create():void{
     const kind=this.ui.itemModal();
     if(!kind || !this.projectId || !this.canSave)return;
-    const name=this.name.trim().replace(/\s+/g,' ');
+    const name=kind==='address'?this.selectedAddress?.name:this.name.trim().replace(/\s+/g,' ');
     const note=this.note.trim();
+    if(kind==='address' && !this.selectedAddress){
+      this.modalError='Du må velge en offisiell vegadresse fra Kartverkets treffliste.';
+      return;
+    }
     if(!name || name.length>120 || note.length>300){
       this.modalError='Navnet må ha 1–120 tegn, beskrivelse maks 300 tegn.';
+      return;
+    }
+    if(kind==='address' && this.selectedAddress && this.items.some(item=>
+      item.projectId===this.projectId && item.kind==='address' &&
+      (item.addressKey===this.selectedAddress?.addressKey ||
+       (!item.addressKey && item.name.toLocaleLowerCase('nb-NO')===name.toLocaleLowerCase('nb-NO'))))){
+      this.modalError='Denne vegadressen finnes allerede i prosjektet.';
       return;
     }
     const id=typeof crypto.randomUUID==='function'?crypto.randomUUID()
@@ -169,7 +343,13 @@ export class ProjectItemsComponent implements OnInit,OnDestroy {
     const next:ProjectItem[]=[...this.items,{
       id,projectId:this.projectId,kind,name,note,
       equipmentType:kind==='equipment'?this.equipmentType:'',
-      ...(this.selectedPosition||{}),
+      ...(kind==='address' && this.selectedAddress
+        ? {
+          addressKey:this.selectedAddress.addressKey,postcode:this.selectedAddress.postcode,
+          poststed:this.selectedAddress.poststed,
+          latitude:this.selectedAddress.latitude,longitude:this.selectedAddress.longitude,
+          addressSource:'Kartverket'
+        }:(this.selectedPosition||{})),
       createdAt:new Date().toISOString()
     }];
     try{
