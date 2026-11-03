@@ -298,7 +298,7 @@ app-root>footer.planner-footer{padding:0;min-height:20px;background:#edf4fb;bord
  
 /* Finder: identical mobile-style control arrangement at any viewport width.
    Main uses available screen width, with only responsive page padding. */
-app-finder .page.narrow{width:100%;max-width:none;margin:0}
+app-finder .page.narrow{width:100%;max-width:520px;margin-inline:auto}
 app-finder .two-col{grid-template-columns:minmax(0,1fr)}
 app-finder .result-metrics{grid-template-columns:minmax(0,1fr) minmax(0,1.25fr)}
 app-finder .tube-box,app-finder .color-box{min-width:0}
