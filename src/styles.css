@@ -135,3 +135,21 @@ app-root>.footer,app-root>.home-bottom-bar{position:relative;flex-shrink:0}
  .topinner nav .home-link{flex:0 0 44px;padding:9px}
  .topinner nav .home-link span{display:none}
 }
+
+
+/* Universal Angular header: menu | precisely centered brand | home icon */
+.topbar{z-index:30}
+.topbar .topinner{position:relative;display:grid;grid-template-columns:minmax(44px,1fr) auto minmax(44px,1fr);align-items:center;gap:8px;min-height:64px;padding:10px 20px}
+.topbar .brand{grid-column:2;grid-row:1;justify-self:center}
+.topbar .header-icon{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;min-width:44px;min-height:44px;padding:10px;border:0;border-radius:10px;background:transparent;color:#315b79;cursor:pointer;touch-action:manipulation;text-decoration:none}
+.topbar .header-icon svg{width:22px;height:22px;flex:none}
+.topbar .menu-toggle{grid-column:1;grid-row:1;justify-self:start}
+.topbar .home-link{grid-column:3;grid-row:1;justify-self:end}
+.topbar .header-icon:hover,.topbar .header-icon[aria-expanded="true"],.topbar .home-link.active{background:#eaf3fc;color:#115c9c}
+.topbar .site-menu{position:absolute;left:20px;top:100%;z-index:40;display:flex;flex-direction:column;align-items:stretch;gap:4px;width:min(300px,calc(100vw - 40px));max-height:min(70dvh,480px);overflow-y:auto;padding:10px;background:#fff;border:1px solid #d9e5f0;border-radius:0 0 14px 14px;box-shadow:0 16px 30px rgba(17,48,79,.17)}
+.topbar .site-menu[hidden]{display:none!important}
+.topbar .site-menu a{display:flex;align-items:center;justify-content:flex-start;min-height:48px;padding:11px 14px;border-radius:9px;font-size:15px;font-weight:700;color:#284863;text-decoration:none}
+.topbar .site-menu a:hover,.topbar .site-menu a.active{background:#eaf3fc;color:#115c9c}
+.topbar .header-icon:focus-visible{outline:3px solid #216fae;outline-offset:2px}
+@media(max-width:699px){.topbar .topinner{display:grid;grid-template-columns:minmax(44px,1fr) auto minmax(44px,1fr);align-items:center;gap:4px;min-height:58px;padding:calc(5px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 5px max(16px,env(safe-area-inset-left,0px))}.topbar .site-menu{left:max(16px,env(safe-area-inset-left,0px));width:min(300px,calc(100vw - 32px))}}
+@media(max-width:350px){.topbar .brand{font-size:17px}}

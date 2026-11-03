@@ -29,3 +29,21 @@ main.landing-main.site-main{margin-inline:auto}
   .site-footer .site-shell{padding:11px 16px;padding-bottom:calc(11px + env(safe-area-inset-bottom,0px))}
 }
 @media(max-width:350px){.site-nav a{font-size:12px;padding-inline:8px}}
+
+
+/* Compact universal header: hamburger | centered brand | icon-only home. */
+header.site-header{position:relative;z-index:30}
+.site-header .site-shell{position:relative;display:grid;grid-template-columns:minmax(44px,1fr) auto minmax(44px,1fr);align-items:center;gap:8px;min-height:64px}
+.site-header .site-brand{grid-column:2;grid-row:1;justify-self:center}
+.site-header .header-icon{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;min-width:44px;min-height:44px;padding:10px;border:0;border-radius:10px;background:transparent;color:#315b79;cursor:pointer;text-decoration:none;touch-action:manipulation}
+.site-header .header-icon svg{width:22px;height:22px;flex:none}
+.site-header .menu-toggle{grid-column:1;grid-row:1;justify-self:start}
+.site-header .home-link{grid-column:3;grid-row:1;justify-self:end}
+.site-header .header-icon:hover,.site-header .header-icon[aria-expanded="true"],.site-header .header-icon[aria-current="page"]{background:#eaf3fc;color:#115c9c}
+.site-header .site-menu{position:absolute;left:20px;top:100%;z-index:40;display:flex;flex-direction:column;gap:4px;width:min(300px,calc(100vw - 40px));max-height:min(70dvh,480px);overflow-y:auto;padding:10px;background:#fff;border:1px solid #d9e5f0;border-radius:0 0 14px 14px;box-shadow:0 16px 30px rgba(17,48,79,.17)}
+.site-header .site-menu[hidden]{display:none!important}
+.site-header .site-menu a{display:flex;align-items:center;min-height:48px;padding:11px 14px;border-radius:9px;color:#284863;font-size:15px;font-weight:700;text-decoration:none}
+.site-header .site-menu a:hover,.site-header .site-menu a[aria-current="page"]{background:#eaf3fc;color:#115c9c}
+.site-header .menu-toggle:focus-visible,.site-header .home-link:focus-visible{outline:3px solid #216fae;outline-offset:2px}
+@media(max-width:699px){.site-header .site-shell{display:grid;grid-template-columns:minmax(44px,1fr) auto minmax(44px,1fr);align-items:center;gap:4px;min-height:58px;padding:calc(5px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 5px max(16px,env(safe-area-inset-left,0px))}.site-header .site-menu{left:max(16px,env(safe-area-inset-left,0px));width:min(300px,calc(100vw - 32px))}}
+@media(max-width:350px){.site-header .site-brand{font-size:17px}}
