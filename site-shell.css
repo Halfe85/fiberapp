@@ -154,3 +154,40 @@ header.site-header{position:relative;z-index:30}
     font-size:21px;
   }
 }
+
+/* Tool headers: on mobile, replace centered FiberApp wordmark with tool title.
+   One header row only; hamburger and home stay together on the left. */
+@media(max-width:699px){
+  .site-header.finder-header .site-shell,
+  .site-header.planner-header .site-shell{
+    grid-template-columns:minmax(88px,1fr) minmax(0,auto) minmax(88px,1fr);
+    grid-template-rows:44px;
+  }
+  .site-header.finder-header .site-brand,
+  .site-header.planner-header .site-brand{display:none}
+  .site-header.finder-header .site-page-title,
+  .site-header.planner-header .site-page-title{
+    position:static;
+    grid-column:2;
+    grid-row:1;
+    justify-self:center;
+    align-self:center;
+    transform:none;
+    min-width:0;
+    max-width:100%;
+    margin:0;
+    padding:0;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    font-size:clamp(16px,4.6vw,21px);
+    line-height:1.2;
+    pointer-events:auto;
+  }
+}
+@media(max-width:350px){
+  .site-header.finder-header .site-shell,
+  .site-header.planner-header .site-shell{
+    grid-template-columns:minmax(80px,1fr) minmax(0,auto) minmax(80px,1fr);
+  }
+}

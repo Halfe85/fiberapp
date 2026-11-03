@@ -258,3 +258,40 @@ app-root>footer.planner-footer{padding:0;min-height:20px;background:#edf4fb;bord
     font-size:21px;
   }
 }
+
+/* Tool headers: on mobile, show tool title where FiberApp normally sits.
+   The home page keeps its FiberApp wordmark. */
+@media(max-width:699px){
+  .topbar.finder-header .topinner,
+  .topbar.planner-header .topinner{
+    grid-template-columns:minmax(88px,1fr) minmax(0,auto) minmax(88px,1fr);
+    grid-template-rows:44px;
+  }
+  .topbar.finder-header .brand,
+  .topbar.planner-header .brand{display:none}
+  .topbar.finder-header .header-page-title,
+  .topbar.planner-header .header-page-title{
+    position:static;
+    grid-column:2;
+    grid-row:1;
+    justify-self:center;
+    align-self:center;
+    transform:none;
+    min-width:0;
+    max-width:100%;
+    margin:0;
+    padding:0;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    font-size:clamp(16px,4.6vw,21px);
+    line-height:1.2;
+    pointer-events:auto;
+  }
+}
+@media(max-width:350px){
+  .topbar.finder-header .topinner,
+  .topbar.planner-header .topinner{
+    grid-template-columns:minmax(80px,1fr) minmax(0,auto) minmax(80px,1fr);
+  }
+}
