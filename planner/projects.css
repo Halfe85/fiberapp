@@ -224,3 +224,7 @@
  .planner-map-header{align-items:flex-start;flex-direction:column;gap:3px}
  .project-position-picker button{width:100%;justify-content:center}
 }
+
+/* Project postal code stays a four-digit string (leading zeros preserved). */
+.project-dialog #project-postcode{max-width:180px;font-variant-numeric:tabular-nums;letter-spacing:.08em}
+@media(max-width:699px){.project-dialog #project-postcode{max-width:100%}}

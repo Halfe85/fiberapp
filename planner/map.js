@@ -3,6 +3,9 @@
   'use strict';
   const TILE='https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png';
   const ITEMS_KEY='fiberapp.planner.items.v1';
+  const PROJECTS_KEY='fiberapp.planner.projects.v1';
+  const POSTCODE_API='https://api.kartverket.no/adresser/v1/sok';
+  const POSTCODE_PAGE_SIZE=50;
   const element=document.getElementById('planner-map');
   const message=document.getElementById('planner-map-message');
   const workspace=document.getElementById('project-workspace');
@@ -20,6 +23,9 @@
   let choosing=false;
   let lastBounds=null;
   let ready=false;
+  let lastSelectionKey=null;
+  let postcodeRequest=0;
+  const postcodeCache=new Map();
 
   function loadItems(){
     try{
@@ -29,6 +35,75 @@
     }catch{
       message.textContent='Kunne ikke lese kartpunkter fra lokal lagring.';
       return [];
+    }
+  }
+  function getPostcode(id){
+    if(!id)return '';
+    try{
+      const raw=localStorage.getItem(PROJECTS_KEY);
+      const data=raw?JSON.parse(raw):[];
+      if(!Array.isArray(data))return '';
+      const project=data.find(p=>p && p.id===id);
+      return typeof project?.postcode==='string' && /^[0-9]{4}$/.test(project.postcode)
+        ? project.postcode : '';
+    }catch{return '';}
+  }
+  async function lookupPostcode(postcode){
+    if(postcodeCache.has(postcode))return postcodeCache.get(postcode);
+    async function page(side){
+      const params=new URLSearchParams({
+        postnummer:postcode,treffPerSide:String(POSTCODE_PAGE_SIZE),
+        side:String(side),utkoordsys:'4258'
+      });
+      const response=await fetch(POSTCODE_API+'?'+params.toString(),{
+        headers:{Accept:'application/json'}
+      });
+      if(!response.ok)throw new Error('Kartverket adresseoppslag feilet: '+response.status);
+      return response.json();
+    }
+    const first=await page(0);
+    const total=Number(first?.metadata?.totaltAntallTreff)||0;
+    if(!Array.isArray(first?.adresser) || !first.adresser.length)return null;
+    const lastPage=Math.max(0,Math.ceil(Math.min(total,10000)/POSTCODE_PAGE_SIZE)-1);
+    const samplePages=[...new Set([Math.floor(lastPage/4),Math.floor(lastPage/2),
+      Math.floor(lastPage*3/4),lastPage])].filter(n=>n>0);
+    const samples=await Promise.allSettled(samplePages.map(page));
+    const points=[...first.adresser];
+    for(const result of samples){
+      if(result.status==='fulfilled' && Array.isArray(result.value?.adresser)){
+        points.push(...result.value.adresser);
+      }
+    }
+    const coords=points.map(item=>item?.representasjonspunkt).filter(point=>
+      point && Number.isFinite(point.lat) && Number.isFinite(point.lon) &&
+      Math.abs(point.lat)<=90 && Math.abs(point.lon)<=180
+    ).map(point=>[point.lat,point.lon]);
+    if(!coords.length)return null;
+    const south=Math.min(...coords.map(p=>p[0])),north=Math.max(...coords.map(p=>p[0]));
+    const west=Math.min(...coords.map(p=>p[1])),east=Math.max(...coords.map(p=>p[1]));
+    const bounds=[[south,west],[north,east]];
+    postcodeCache.set(postcode,bounds);
+    return bounds;
+  }
+  async function zoomToPostcode(id,postcode,request){
+    message.textContent='Finner kartutsnitt for postnummer '+postcode+' …';
+    try{
+      const bounds=await lookupPostcode(postcode);
+      if(request!==postcodeRequest || id!==getProjectId() ||
+         postcode!==getPostcode(id) || !map || choosing)return;
+      if(!bounds){
+        message.textContent='Ingen kartfestede vegadresser funnet for postnummer '+postcode+
+          '. Du kan navigere manuelt i kartet.';
+        return;
+      }
+      // Geografisk estimat fra adressepunkter, ikke offisiell postnummergrense.
+      map.fitBounds(bounds,{padding:[40,40],maxZoom:14});
+      message.textContent='Kartet viser et omtrentlig utsnitt for postnummer '+postcode+
+        '. Dette er ikke en fastsatt prosjektgrense.';
+    }catch{
+      if(request!==postcodeRequest || id!==getProjectId())return;
+      message.textContent='Kunne ikke slå opp postnummer '+postcode+
+        ' hos Kartverket. Kartet kan brukes manuelt.';
     }
   }
   function popupNode(item){
@@ -101,7 +176,18 @@
     element.classList.remove('picking-position');
     message.textContent=defaultMessage;
     currentProjectId=getProjectId();
-    if(currentProjectId)ensureMap();
+    const postcode=getPostcode(currentProjectId);
+    const selectionKey=(currentProjectId||'')+'|'+postcode;
+    const changed=selectionKey!==lastSelectionKey;
+    if(changed){
+      lastSelectionKey=selectionKey;
+      lastBounds=null;
+    }
+    const request=++postcodeRequest;
+    if(currentProjectId){
+      ensureMap();
+      if(changed && postcode && map)void zoomToPostcode(currentProjectId,postcode,request);
+    }
   }
   window.addEventListener('fiberapp:planner-map-select-start',event=>{
     if(!map || !ready || !getProjectId() || event.detail?.projectId!==getProjectId()){
