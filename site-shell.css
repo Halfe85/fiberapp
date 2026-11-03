@@ -37,8 +37,8 @@ header.site-header{position:relative;z-index:30}
 .site-header .site-brand{grid-column:2;grid-row:1;justify-self:center}
 .site-header .header-icon{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;min-width:44px;min-height:44px;padding:10px;border:0;border-radius:10px;background:transparent;color:#315b79;cursor:pointer;text-decoration:none;touch-action:manipulation}
 .site-header .header-icon svg{width:22px;height:22px;flex:none}
-.site-header .menu-toggle{grid-column:1;grid-row:1;justify-self:start}
-.site-header .home-link{grid-column:3;grid-row:1;justify-self:end}
+.site-header .site-actions{grid-column:1;grid-row:1;justify-self:start;display:flex;align-items:center;gap:4px;min-width:0}
+.site-header .site-actions .home-link{flex:none}
 .site-header .header-icon:hover,.site-header .header-icon[aria-expanded="true"],.site-header .header-icon[aria-current="page"]{background:#eaf3fc;color:#115c9c}
 .site-header .site-menu{position:absolute;left:20px;top:100%;z-index:40;display:flex;flex-direction:column;gap:4px;width:min(300px,calc(100vw - 40px));max-height:min(70dvh,480px);overflow-y:auto;padding:10px;background:#fff;border:1px solid #d9e5f0;border-radius:0 0 14px 14px;box-shadow:0 16px 30px rgba(17,48,79,.17)}
 .site-header .site-menu[hidden]{display:none!important}
@@ -47,3 +47,10 @@ header.site-header{position:relative;z-index:30}
 .site-header .menu-toggle:focus-visible,.site-header .home-link:focus-visible{outline:3px solid #216fae;outline-offset:2px}
 @media(max-width:699px){.site-header .site-shell{display:grid;grid-template-columns:minmax(44px,1fr) auto minmax(44px,1fr);align-items:center;gap:4px;min-height:58px;padding:calc(5px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 5px max(16px,env(safe-area-inset-left,0px))}.site-header .site-menu{left:max(16px,env(safe-area-inset-left,0px));width:min(300px,calc(100vw - 32px))}}
 @media(max-width:350px){.site-header .site-brand{font-size:17px}}
+
+/* On narrow phones, fit both left-side actions without shifting the centered brand. */
+@media(max-width:350px){
+ .site-header .site-actions{gap:2px}
+ .site-header .site-actions .header-icon{width:40px;min-width:40px;height:44px}
+ .site-header .site-brand{font-size:16px}
+}
