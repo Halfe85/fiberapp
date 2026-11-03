@@ -228,3 +228,21 @@
 /* Project postal code stays a four-digit string (leading zeros preserved). */
 .project-dialog #project-postcode{max-width:180px;font-variant-numeric:tabular-nums;letter-spacing:.08em}
 @media(max-width:699px){.project-dialog #project-postcode{max-width:100%}}
+
+/* Kartverket address search, strictly street/house addresses (not units). */
+.project-item-dialog [hidden],.address-search-panel[hidden],
+#project-equipment-name-fields[hidden],#project-equipment-position-picker[hidden],
+.address-search-results[hidden],.address-search-selected[hidden]{display:none!important}
+.address-search-scope,.address-search-status{font-size:12px;line-height:1.45;
+ color:#637e91;margin:0}
+.address-search-results{list-style:none;margin:0;padding:3px;max-height:240px;overflow-y:auto;
+ border:1px solid #d7e3ec;border-radius:10px;background:#fff}
+.address-search-results li+li{border-top:1px solid #ebf1f6}
+.address-search-results button{display:flex;flex-direction:column;width:100%;gap:3px;
+ padding:10px 12px;background:transparent;border:0;border-radius:7px;text-align:left;
+ color:#243d55;cursor:pointer;font:inherit}
+.address-search-results button:hover,.address-search-results button:focus-visible{background:#e9f4fc}
+.address-search-results button strong{font-size:14px}
+.address-search-results button span{font-size:12px;color:#637e91}
+.address-search-selected{padding:10px 12px;border-radius:9px;background:#e8f6f0;
+ color:#155b41;font-size:13px;font-weight:650}

@@ -14,7 +14,7 @@
   </style>
   <link rel="stylesheet" href="../site-shell.css?v=mobile-tool-title-1">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="./projects.css?v=11"></head>
+<link rel="stylesheet" href="./projects.css?v=12"></head>
 <body>
   <header class="site-header planner-header"><div class="site-shell"><div class="site-actions"><button class="menu-toggle header-icon" type="button" aria-label="Åpne meny" aria-controls="site-menu" aria-expanded="false" title="Meny"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button><a class="home-link header-icon" href="../" aria-label="Hjem" title="Hjem"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7"/><path d="M5 9v12h14V9"/><path d="M9 21v-8h6v8"/></svg></a><button type="button" class="project-header-back header-icon" id="project-back" title="Tilbake til prosjekter" aria-label="Tilbake til prosjekter" hidden><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7M5 12h14"/></svg></button></div><a class="site-brand" href="../" aria-label="FiberApp forside">FIBER<span>APP</span></a><nav class="site-menu" id="site-menu" aria-label="Verktøymeny" hidden><a href="../finder/">Fiberfinder</a><a href="../planner/" aria-current="page">Fiber Planner</a></nav><h1 class="site-page-title">Fiber Planner</h1><button class="planner-add header-icon" type="button" id="add-project" aria-label="Nytt prosjekt" title="Nytt prosjekt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button><div class="planner-project-actions" id="project-actions" hidden>
   <button type="button" class="planner-add header-icon" id="project-add-toggle" aria-label="Legg til i prosjekt" aria-controls="project-add-menu" aria-expanded="false" title="Legg til i prosjekt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
@@ -80,8 +80,22 @@
       <h2 id="project-item-title">Ny adresse</h2>
       <button type="button" id="project-item-close" class="close-button" aria-label="Lukk">×</button>
     </div>
-    <label for="project-item-name" id="project-item-name-label">Adresse *</label>
-    <input id="project-item-name" name="name" type="text" required maxlength="120" autocomplete="off" placeholder="Gateadresse">
+    <div id="project-address-search" class="address-search-panel">
+      <label for="project-address-query">Søk etter vegadresse *</label>
+      <input id="project-address-query" type="search" maxlength="120"
+             autocomplete="off" spellcheck="false" placeholder="Skriv gatenavn eller husnummer"
+             aria-describedby="project-address-scope project-address-status">
+      <p id="project-address-scope" class="address-search-scope"></p>
+      <p id="project-address-status" class="address-search-status" role="status" aria-live="polite">
+        Skriv minst to tegn for å søke i Kartverkets adresseregister.
+      </p>
+      <ul id="project-address-results" class="address-search-results" aria-label="Fysiske vegadresser" hidden></ul>
+      <p id="project-address-selected" class="address-search-selected" hidden></p>
+    </div>
+    <div id="project-equipment-name-fields" hidden>
+      <label for="project-item-name">Utstyrsnavn / ID *</label>
+      <input id="project-item-name" name="name" type="text" maxlength="120" autocomplete="off" placeholder="F.eks. ODF-01">
+    </div>
     <div id="project-equipment-type-fields" hidden>
       <label for="project-equipment-type">Utstyrstype</label>
       <select id="project-equipment-type" name="equipment-type">
@@ -90,7 +104,7 @@
         <option value="Svitsj">Svitsj</option>
       </select>
     </div>
-    <div class="project-position-picker">
+    <div class="project-position-picker" id="project-equipment-position-picker" hidden>
       <button type="button" id="project-item-pick-location" class="secondary-button">
         <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"
              stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg>
@@ -110,7 +124,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
 <script src="../site-menu.js" defer></script>
 <script src="./projects.js?v=9" defer></script>
-<script src="./project-items.js?v=2" defer></script>
+<script src="./project-items.js?v=3" defer></script>
 <script src="./map.js?v=3" defer></script>
 </body>
 </html>
