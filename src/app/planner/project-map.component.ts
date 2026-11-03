@@ -19,15 +19,9 @@ const KARTVERKET_WMTS='https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/we
   standalone:true,
   imports:[CommonModule],
   template:`
-    <section class="planner-map-section" aria-labelledby="ng-planner-map-heading">
-      <div class="planner-map-header">
-        <h3 id="ng-planner-map-heading">Kart</h3>
-        <span>Topografisk kart fra Kartverket</span>
-      </div>
-      <div class="planner-map" #mapHost role="region" aria-label="Prosjektkart"></div>
-      <p class="planner-map-message" role="status" #message>
-        Naviger i kartet. Plasser adresser eller utstyr via + i headeren.
-      </p>
+    <section class="planner-map-section" aria-label="Prosjektkart">
+      <div class="planner-map" #mapHost role="region" aria-label="Kartverket prosjektkart"></div>
+      <p class="planner-map-message" role="status" aria-live="polite" #message></p>
     </section>
   `
 })

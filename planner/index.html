@@ -14,7 +14,7 @@
   </style>
   <link rel="stylesheet" href="../site-shell.css?v=mobile-tool-title-1">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="./projects.css?v=10"></head>
+<link rel="stylesheet" href="./projects.css?v=11"></head>
 <body>
   <header class="site-header planner-header"><div class="site-shell"><div class="site-actions"><button class="menu-toggle header-icon" type="button" aria-label="Åpne meny" aria-controls="site-menu" aria-expanded="false" title="Meny"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button><a class="home-link header-icon" href="../" aria-label="Hjem" title="Hjem"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7"/><path d="M5 9v12h14V9"/><path d="M9 21v-8h6v8"/></svg></a><button type="button" class="project-header-back header-icon" id="project-back" title="Tilbake til prosjekter" aria-label="Tilbake til prosjekter" hidden><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7M5 12h14"/></svg></button></div><a class="site-brand" href="../" aria-label="FiberApp forside">FIBER<span>APP</span></a><nav class="site-menu" id="site-menu" aria-label="Verktøymeny" hidden><a href="../finder/">Fiberfinder</a><a href="../planner/" aria-current="page">Fiber Planner</a></nav><h1 class="site-page-title">Fiber Planner</h1><button class="planner-add header-icon" type="button" id="add-project" aria-label="Nytt prosjekt" title="Nytt prosjekt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button><div class="planner-project-actions" id="project-actions" hidden>
   <button type="button" class="planner-add header-icon" id="project-add-toggle" aria-label="Legg til i prosjekt" aria-controls="project-add-menu" aria-expanded="false" title="Legg til i prosjekt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
@@ -34,15 +34,9 @@
       <h2 id="workspace-title" tabindex="-1"></h2>
       <p id="workspace-description" hidden></p>
     </div>
-    <section class="planner-map-section" aria-labelledby="planner-map-heading">
-      <div class="planner-map-header">
-        <h3 id="planner-map-heading">Kart</h3>
-        <span>Topografisk kart fra Kartverket</span>
-      </div>
-      <div id="planner-map" class="planner-map" role="region" aria-label="Prosjektkart"></div>
-      <p id="planner-map-message" class="planner-map-message" role="status">
-        Naviger i kartet. Plasser adresser eller utstyr via + i headeren.
-      </p>
+    <section class="planner-map-section" aria-label="Prosjektkart">
+      <div id="planner-map" class="planner-map" role="region" aria-label="Kartverket prosjektkart"></div>
+      <p id="planner-map-message" class="planner-map-message" role="status" aria-live="polite"></p>
     </section>
     <div id="project-items" class="project-items" hidden>
       <section id="project-addresses-section" class="project-items-section" hidden aria-label="Adresser">

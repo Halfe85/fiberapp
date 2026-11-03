@@ -206,13 +206,14 @@
 
 /* Project map: official Kartverket WMTS background via Leaflet. */
 .planner-map-section{margin-top:24px;min-width:0}
-.planner-map-header{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:0 0 10px}
-.planner-map-header h3{margin:0;font-size:18px;color:#1c3955}
-.planner-map-header span{font-size:12px;color:#71869b}
 .planner-map{height:clamp(320px,55vh,620px);min-height:320px;width:100%;
  border:1px solid #d9e5f0;border-radius:14px;background:#e9f0f4;z-index:0}
 .planner-map.picking-position,.planner-map.picking-position .leaflet-container{cursor:crosshair!important}
-.planner-map-message{font-size:13px;color:#607b90;margin:10px 0 0;min-height:18px}
+/* Keep map feedback available for assistive technology without a text row below the map. */
+.planner-map-message{
+  position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+  overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0
+}
 .project-position-picker{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px}
 .project-position-picker button{border:0;min-height:44px;display:inline-flex;align-items:center;gap:6px;
  padding:10px 13px;border-radius:10px;font:inherit;font-size:14px;font-weight:700;cursor:pointer}
@@ -221,7 +222,6 @@
 .project-item-position{display:inline-block;font-size:12px;color:#2578a7;margin:5px 0 0}
 @media(max-width:699px){
  .planner-map{height:390px;min-height:300px;border-radius:11px}
- .planner-map-header{align-items:flex-start;flex-direction:column;gap:3px}
  .project-position-picker button{width:100%;justify-content:center}
 }
 
