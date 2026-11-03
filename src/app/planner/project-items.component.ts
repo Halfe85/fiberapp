@@ -109,6 +109,22 @@ const ADDRESS_API='https://api.kartverket.no/adresser/v1/sok';
           <button #addressEditClose type="button" class="close-button" aria-label="Lukk"
                   (click)="closeAddressEditor()">×</button>
         </div>
+        <div class="dialog-actions" *ngIf="!confirmingAddressDelete">
+          <button type="button" class="delete-open-button" (click)="requestAddressDelete()">
+            Slett adresse
+          </button>
+        </div>
+        <section class="address-delete-confirmation" *ngIf="confirmingAddressDelete"
+                 aria-label="Bekreft sletting av adresse">
+          <p>Vil du slette <strong>{{editingAddress.name}}</strong> fra prosjektet?</p>
+          <div class="notice error" *ngIf="deleteAddressError" role="alert">
+            {{deleteAddressError}}
+          </div>
+          <div class="dialog-actions">
+            <button type="button" class="secondary" (click)="cancelAddressDelete()">Avbryt</button>
+            <button type="button" class="delete-confirm-button" (click)="deleteAddress()">Slett</button>
+          </div>
+        </section>
       </section>
     </div>
     <div class="planner-modal-backdrop" *ngIf="ui.itemModal()" (click)="close()">
@@ -193,6 +209,8 @@ export class ProjectItemsComponent implements OnInit,OnDestroy {
   @Input({required:true}) projectId!:string;
   items:ProjectItem[]=[];
   editingAddress:ProjectItem|null=null;
+  confirmingAddressDelete=false;
+  deleteAddressError='';
   readonly dismissedAddressTools=new Set<string>();
   private editorOpenedByPointer=false;
   private editorTrigger:HTMLElement|null=null;
@@ -345,14 +363,68 @@ export class ProjectItemsComponent implements OnInit,OnDestroy {
     this.editorTrigger=trigger instanceof HTMLElement?trigger:null;
     this.editorOpenedByPointer=event.detail!==0;
     if(this.editorOpenedByPointer)this.dismissedAddressTools.add(item.id);
+    this.confirmingAddressDelete=false;
+    this.deleteAddressError='';
     this.editingAddress=item;
   }
   onAddressRowPointerLeave(item:ProjectItem):void {
     // Do not clear this just because the overlay obscured the row on open.
     if(this.editingAddress?.id!==item.id)this.dismissedAddressTools.delete(item.id);
   }
+  requestAddressDelete():void {
+    if(!this.editingAddress)return;
+    this.deleteAddressError='';
+    this.confirmingAddressDelete=true;
+  }
+  cancelAddressDelete():void {
+    this.confirmingAddressDelete=false;
+    this.deleteAddressError='';
+  }
+  deleteAddress():void {
+    const address=this.editingAddress;
+    if(!address || !this.confirmingAddressDelete || !this.canSave ||
+       address.kind!=='address' || address.projectId!==this.projectId)return;
+    try{
+      // Re-read storage so unrelated equipment and address records are preserved.
+      const raw=localStorage.getItem(KEY);
+      const stored:unknown=raw?JSON.parse(raw):[];
+      if(!Array.isArray(stored))throw new Error('Ugyldig lagring');
+      const exists=stored.some((item:unknown)=>item!==null && typeof item==='object' &&
+        (item as Partial<ProjectItem>).id===address.id &&
+        (item as Partial<ProjectItem>).projectId===this.projectId &&
+        (item as Partial<ProjectItem>).kind==='address');
+      if(!exists){
+        this.deleteAddressError='Adressen finnes ikke lenger i prosjektet.';
+        return;
+      }
+      const next=stored.filter((item:unknown)=>!(
+        item!==null && typeof item==='object' &&
+        (item as Partial<ProjectItem>).id===address.id &&
+        (item as Partial<ProjectItem>).projectId===this.projectId &&
+        (item as Partial<ProjectItem>).kind==='address'
+      ));
+      localStorage.setItem(KEY,JSON.stringify(next));
+      this.items=next.filter((item:unknown):item is ProjectItem=>{
+        if(!item || typeof item!=='object')return false;
+        const candidate=item as Partial<ProjectItem>;
+        return typeof candidate.id==='string' &&
+          typeof candidate.projectId==='string' &&
+          (candidate.kind==='address'||candidate.kind==='equipment') &&
+          typeof candidate.name==='string';
+      });
+      this.storageError='';
+      this.closeAddressEditor();
+      window.dispatchEvent(new CustomEvent('fiberapp:planner-items-changed',{
+        detail:{projectId:this.projectId}
+      }));
+    }catch{
+      this.deleteAddressError='Kunne ikke slette adressen. Kontroller nettleserlagringen.';
+    }
+  }
   closeAddressEditor():void {
     this.editingAddress=null;
+    this.confirmingAddressDelete=false;
+    this.deleteAddressError='';
     const trigger=this.editorTrigger;
     this.editorTrigger=null;
     if(trigger?.isConnected){
@@ -387,6 +459,8 @@ export class ProjectItemsComponent implements OnInit,OnDestroy {
   ngOnDestroy():void{
     this.cancelSearch();
     this.editingAddress=null;
+    this.confirmingAddressDelete=false;
+    this.deleteAddressError='';
     this.editorTrigger=null;
     this.editorOpenedByPointer=false;
     this.dismissedAddressTools.clear();

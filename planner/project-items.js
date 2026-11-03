@@ -31,6 +31,13 @@
   const addressEmpty = document.getElementById('project-addresses-empty');
   const editDialog = document.getElementById('project-address-edit-dialog');
   const editClose = document.getElementById('project-address-edit-close');
+  const editActions = document.getElementById('project-address-edit-actions');
+  const deleteOpen = document.getElementById('project-address-delete-open');
+  const deleteConfirmation = document.getElementById('project-address-delete-confirmation');
+  const deleteTarget = document.getElementById('project-address-delete-target');
+  const deleteError = document.getElementById('project-address-delete-error');
+  const deleteCancel = document.getElementById('project-address-delete-cancel');
+  const deleteConfirm = document.getElementById('project-address-delete-confirm');
   const sections = {
     address: {
       section: document.getElementById('project-addresses-section'),
@@ -56,6 +63,17 @@
   let editReturnFocus = null;
   let editActiveRow = null;
   let editOpenedByPointer = false;
+  function resetAddressDelete(){
+    editActions.hidden=false;
+    deleteConfirmation.hidden=true;
+    deleteError.hidden=true;
+    deleteError.textContent='';
+    deleteTarget.textContent='';
+  }
+  function showAddressDeleteError(message){
+    deleteError.textContent=message;
+    deleteError.hidden=false;
+  }
   function openAddressEditor(item,trigger,event){
     // Editing is a UI placeholder. No item is modified until an editor is built.
     if(!editDialog || !editClose || !selectedProject() ||
@@ -68,6 +86,7 @@
     // Re-enable hover only after the pointer leaves this address row.
     if(editOpenedByPointer)row?.classList.add('address-tool-dismissed');
     editDialog.dataset.addressId = item.id;
+    resetAddressDelete();
     editReturnFocus = trigger;
     editDialog.showModal();
     editClose.focus();
@@ -369,11 +388,58 @@
     toggle.setAttribute('aria-expanded', String(!menu.hidden));
   });
   if(editDialog && editClose){
+    deleteOpen.addEventListener('click',()=>{
+      const projectId=selectedProject(),itemId=editDialog.dataset.addressId;
+      const address=rows.find(item=>item.kind==='address' &&
+        item.projectId===projectId && item.id===itemId);
+      if(!editDialog.open || !address)return;
+      deleteTarget.textContent=address.name;
+      deleteError.textContent='';
+      deleteError.hidden=true;
+      editActions.hidden=true;
+      deleteConfirmation.hidden=false;
+      deleteCancel.focus();
+    });
+    deleteCancel.addEventListener('click',()=>{
+      resetAddressDelete();
+      deleteOpen.focus();
+    });
+    deleteConfirm.addEventListener('click',()=>{
+      if(!editDialog.open || !canSave)return;
+      const projectId=selectedProject(),itemId=editDialog.dataset.addressId;
+      if(!projectId || !itemId){
+        showAddressDeleteError('Fant ikke adressen som skal slettes.');
+        return;
+      }
+      try{
+        // Read the latest state to preserve unrelated records and changes.
+        const raw=localStorage.getItem(KEY);
+        const current=raw?JSON.parse(raw):[];
+        if(!Array.isArray(current))throw new Error('Ugyldig lagring');
+        const target=current.find(item=>item && item.id===itemId &&
+          item.projectId===projectId && item.kind==='address');
+        if(!target){
+          showAddressDeleteError('Adressen finnes ikke lenger i prosjektet.');
+          return;
+        }
+        const next=current.filter(item=>item!==target);
+        localStorage.setItem(KEY,JSON.stringify(next));
+        rows=next;
+        editDialog.close();
+        render();
+        window.dispatchEvent(new CustomEvent('fiberapp:planner-items-changed',{
+          detail:{projectId}
+        }));
+      }catch{
+        showAddressDeleteError('Kunne ikke slette adressen. Kontroller nettleserlagringen.');
+      }
+    });
     editClose.addEventListener('click',()=>editDialog.close());
     editDialog.addEventListener('click',event=>{
       if(event.target===editDialog)editDialog.close();
     });
     editDialog.addEventListener('close',()=>{
+      resetAddressDelete();
       delete editDialog.dataset.addressId;
       editActiveRow?.classList.remove('address-tool-modal-open');
       if(editReturnFocus?.isConnected){

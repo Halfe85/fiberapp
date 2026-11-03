@@ -467,3 +467,11 @@
   opacity:0;
   pointer-events:none;
 }
+
+/* One-step address deletion confirmation inside the existing edit dialog. */
+.project-address-edit-dialog .dialog-actions{margin-top:16px}
+.project-address-edit-dialog #project-address-edit-actions{justify-content:flex-start}
+.project-address-edit-dialog .address-delete-confirmation p{
+  margin:8px 0 0;line-height:1.5;color:#344b63
+}
+.project-address-edit-dialog .address-delete-confirmation p strong{overflow-wrap:anywhere}

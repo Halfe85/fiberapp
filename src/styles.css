@@ -801,3 +801,21 @@ app-project-items .planner-address-row.address-tool-dismissed .planner-address-e
   opacity:0;
   pointer-events:none;
 }
+
+/* Address deletion: one confirmation, no additional nested modal. */
+app-project-items .planner-address-edit-modal .dialog-actions{
+  display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:16px
+}
+app-project-items .planner-address-edit-modal .dialog-actions button{
+  min-height:44px;padding:10px 16px;border:0;border-radius:10px;
+  font:inherit;font-weight:750;cursor:pointer
+}
+app-project-items .planner-address-edit-modal .dialog-actions .delete-open-button{
+  margin-right:auto;background:#fff0f0;color:#a52828
+}
+app-project-items .planner-address-edit-modal .dialog-actions .delete-confirm-button{
+  background:#ab2727;color:#fff
+}
+app-project-items .planner-address-edit-modal .address-delete-confirmation p{
+  margin:8px 0 0;line-height:1.5;color:#344b63;overflow-wrap:anywhere
+}
