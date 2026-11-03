@@ -99,3 +99,31 @@ app-home{display:flex;flex:1;min-width:0;width:100%;align-items:center}
   .tool-tile{min-height:176px}
 }
 @media(prefers-reduced-motion:reduce){.tool-tile{transition:none}}
+
+/* All Angular routes share a fixed-height three-row page shell. */
+html,body{height:100%;overflow:hidden}
+body{min-height:0}
+app-root{
+  height:100vh;
+  height:100dvh;
+  min-height:0;
+  overflow:hidden;
+  display:grid;
+  grid-template-rows:auto minmax(0,1fr) auto;
+}
+app-root>header,app-root>footer{min-width:0;min-height:0;flex-shrink:0}
+app-root>.topbar{position:relative;top:auto}
+app-root>main{
+  min-width:0;
+  min-height:0;
+  height:100%;
+  overflow-y:auto;
+  overflow-x:hidden;
+  overscroll-behavior-y:contain;
+  -webkit-overflow-scrolling:touch;
+  display:flex;
+  flex-direction:column;
+}
+app-home{flex:1 0 auto;min-width:0;width:100%}
+app-finder,app-planner{display:block;min-width:0;width:100%;flex:none}
+app-root>.footer,app-root>.home-bottom-bar{position:relative;flex-shrink:0}
