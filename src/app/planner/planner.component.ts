@@ -1,5 +1,7 @@
 import {CommonModule} from '@angular/common';
-import {Component,HostListener,OnInit} from '@angular/core';
+import {Component,HostListener,OnInit,OnDestroy} from '@angular/core';
+import {ActivatedRoute,Router} from '@angular/router';
+import {Subscription} from 'rxjs';
 import {FormsModule} from '@angular/forms';
 import {PlannerUiService} from './planner-ui.service';
 
@@ -17,7 +19,7 @@ const STORAGE_KEY='fiberapp.planner.projects.v1';
   standalone:true,
   imports:[CommonModule,FormsModule],
   template:`
-  <section class="page planner-projects" aria-labelledby="planner-projects-title">
+  <section class="page planner-projects" *ngIf="!activeProject" aria-labelledby="planner-projects-title">
     <div class="projects-heading">
       <h2 id="planner-projects-title">Prosjekter</h2>
       <span class="project-count" aria-live="polite">
@@ -31,7 +33,12 @@ const STORAGE_KEY='fiberapp.planner.projects.v1';
            (pointerdown)="onProjectPointerDown($event,item.id)"
            (pointerup)="onProjectPointerUp($event,item.id)"
            (pointercancel)="pointerStart=null">
-        <article class="panel project-row">
+        <article class="panel project-row" role="button" tabindex="0"
+                 [attr.aria-label]="'Åpne prosjekt: '+item.name"
+                 (pointerdown)="swipeConsumedId=null"
+                 (click)="onProjectClick(item)"
+                 (keydown.enter)="openProject(item)"
+                 (keydown.space)="$event.preventDefault();openProject(item)">
           <div class="project-info">
             <strong>{{item.name}}</strong>
             <p *ngIf="item.description">{{item.description}}</p>
@@ -58,6 +65,22 @@ const STORAGE_KEY='fiberapp.planner.projects.v1';
         <p>Trykk på + i headeren for å opprette et prosjekt.</p>
       </div>
     </ng-template>
+  </section>
+  <section class="page planner-workspace" *ngIf="activeProject as current"
+           aria-labelledby="ng-workspace-title">
+    <button type="button" class="project-back" (click)="backToProjects()">
+      <span aria-hidden="true">←</span> Prosjekter
+    </button>
+    <div class="workspace-heading">
+      <p class="workspace-label">Prosjekt</p>
+      <h2 id="ng-workspace-title">{{current.name}}</h2>
+      <p class="workspace-description" *ngIf="current.description">{{current.description}}</p>
+      <p class="workspace-date">Opprettet {{formatDate(current.createdAt)}}</p>
+    </div>
+    <section class="workspace-section" aria-labelledby="ng-workspace-overview-title">
+      <h3 id="ng-workspace-overview-title">Prosjektoversikt</h3>
+      <p>Prosjektet er åpnet. Her bygger vi videre med anleggsdata i neste steg.</p>
+    </section>
   </section>
   <div class="planner-modal-backdrop" *ngIf="ui.createOpen()" (click)="close()">
     <section class="planner-modal" role="dialog" aria-modal="true"
@@ -98,7 +121,7 @@ const STORAGE_KEY='fiberapp.planner.projects.v1';
   </div>
   `
 })
-export class PlannerComponent implements OnInit {
+export class PlannerComponent implements OnInit,OnDestroy {
   projects:Project[]=[];
   error='';
   formError='';
@@ -106,12 +129,19 @@ export class PlannerComponent implements OnInit {
   description='';
   storageAvailable=true;
   openProjectId:string|null=null;
+  activeProjectId:string|null=null;
+  swipeConsumedId:string|null=null;
+  private routeSubscription?:Subscription;
   editingId:string|null=null;
   deleting=false;
   deleteConfirmation='';
   deleteError='';
   pointerStart:{x:number;y:number;pointerId:number;projectId:string}|null=null;
-  constructor(public readonly ui:PlannerUiService){}
+  constructor(public readonly ui:PlannerUiService,private readonly router:Router,
+              private readonly route:ActivatedRoute){} 
+  get activeProject():Project|undefined{
+    return this.projects.find(p=>p.id===this.activeProjectId);
+  }
   get sortedProjects():Project[]{
     return [...this.projects].sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
   }
@@ -124,6 +154,11 @@ export class PlannerComponent implements OnInit {
     return Number.isFinite(date.valueOf())?date.toLocaleDateString('nb-NO'):'';
   }
   ngOnInit():void{
+    this.routeSubscription=this.route.queryParamMap.subscribe(params=>{
+      this.activeProjectId=params.get('project');
+      this.openProjectId=null;
+      this.ui.projectOpen.set(Boolean(this.activeProject));
+    });
     try{
       const raw=localStorage.getItem(STORAGE_KEY);
       if(!raw)return;
@@ -134,12 +169,34 @@ export class PlannerComponent implements OnInit {
         const p=value as Partial<Project>;
         return typeof p.id==='string' && typeof p.name==='string' && typeof p.createdAt==='string';
       });
+      this.ui.projectOpen.set(Boolean(this.activeProject));
     }catch{
       this.storageAvailable=false;
       this.error='Kunne ikke lese lagrede prosjekter. Eksisterende data er ikke overskrevet.';
     }
   }
+  ngOnDestroy():void{
+    this.routeSubscription?.unsubscribe();
+    this.ui.projectOpen.set(false);
+  }
+  onProjectClick(item:Project):void{
+    if(this.swipeConsumedId===item.id){
+      this.swipeConsumedId=null;
+      return;
+    }
+    this.openProject(item);
+  }
+  openProject(item:Project):void{
+    this.openProjectId=null;
+    void this.router.navigate([],{relativeTo:this.route,
+      queryParams:{project:item.id},queryParamsHandling:'merge'});
+  }
+  backToProjects():void{
+    void this.router.navigate([],{relativeTo:this.route,
+      queryParams:{project:null},queryParamsHandling:'merge'});
+  }
   onProjectPointerDown(event:PointerEvent,id:string):void{
+    this.swipeConsumedId=null;
     if(event.pointerType==='mouse' || event.button!==0 ||
       (event.target as Element).closest('.project-action-zone'))return;
     this.pointerStart={x:event.clientX,y:event.clientY,pointerId:event.pointerId,projectId:id};
@@ -150,6 +207,7 @@ export class PlannerComponent implements OnInit {
     if(!start || start.pointerId!==event.pointerId || start.projectId!==id)return;
     const dx=event.clientX-start.x,dy=event.clientY-start.y;
     if(Math.abs(dx)<35 || Math.abs(dx)<Math.abs(dy)*1.2)return;
+    this.swipeConsumedId=id;
     if(dx<0)this.openProjectId=id;
     else if(this.openProjectId===id)this.openProjectId=null;
   }

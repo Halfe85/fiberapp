@@ -4,6 +4,7 @@ import {Injectable,signal} from '@angular/core';
 @Injectable({providedIn:'root'})
 export class PlannerUiService {
   readonly createOpen=signal(false);
+  readonly projectOpen=signal(false);
   openCreate():void{this.createOpen.set(true);}
   closeCreate():void{this.createOpen.set(false);}
 }
