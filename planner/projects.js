@@ -9,6 +9,12 @@
   const desc = document.getElementById('project-description');
   const list = document.getElementById('project-list');
   const count = document.getElementById('project-count');
+  const projectsView = document.querySelector('.projects-view');
+  const workspace = document.getElementById('project-workspace');
+  const workspaceTitle = document.getElementById('workspace-title');
+  const workspaceDescription = document.getElementById('workspace-description');
+  const workspaceCreated = document.getElementById('workspace-created');
+  const backButton = document.getElementById('project-back');
   const warning = document.getElementById('project-error');
   const formError = document.getElementById('project-form-error');
   const title = document.getElementById('project-dialog-title');
@@ -65,6 +71,36 @@
     dialog.showModal();
     input.focus();
   }
+  function showSelectedProject() {
+    const id = new URL(location.href).searchParams.get('project');
+    const selected = projects.find(p => p.id === id);
+    projectsView.hidden = Boolean(selected);
+    workspace.hidden = !selected;
+    button.hidden = Boolean(selected);
+    document.getElementById('main').setAttribute('aria-label', selected ? selected.name : 'Prosjekter');
+    document.title = selected ? selected.name + ' | Fiber Planner' : 'Fiber Planner | Fiberapp';
+    if (!selected) return;
+    workspaceTitle.textContent = selected.name;
+    workspaceDescription.textContent = selected.description || '';
+    workspaceDescription.hidden = !selected.description;
+    workspaceCreated.textContent = 'Opprettet ' + new Date(selected.createdAt).toLocaleDateString('nb-NO');
+  }
+  function openProject(id) {
+    if (!projects.some(p => p.id === id)) return;
+    const url = new URL(location.href);
+    url.searchParams.set('project', id);
+    history.pushState(null, '', url);
+    showSelectedProject();
+    document.getElementById('main').scrollTop = 0;
+    backButton.focus();
+  }
+  function backToProjects() {
+    const url = new URL(location.href);
+    url.searchParams.delete('project');
+    history.pushState(null, '', url);
+    showSelectedProject();
+    document.getElementById('main').scrollTop = 0;
+  }
   function projectRow(project) {
     const wrap = document.createElement('div');
     wrap.className = 'project-swipe';
@@ -86,6 +122,21 @@
 
     const row = document.createElement('article');
     row.className = 'project-row';
+    row.setAttribute('role', 'button');
+    row.setAttribute('tabindex', '0');
+    row.setAttribute('aria-label', 'Åpne prosjekt: ' + project.name);
+    let swipeConsumed = false;
+    row.addEventListener('pointerdown', () => { swipeConsumed = false; });
+    row.addEventListener('click', () => {
+      if (swipeConsumed) { swipeConsumed = false; return; }
+      openProject(project.id);
+    });
+    row.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        openProject(project.id);
+      }
+    });
     const info = document.createElement('div');
     info.className = 'content';
     const name = document.createElement('strong');
@@ -115,6 +166,7 @@
       const dy = event.clientY - start.y;
       start = null;
       if (Math.abs(dx) < 35 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+      swipeConsumed = true;
       if (dx < 0 && openId !== project.id) showTools(project.id);
       else if (dx > 0 && openId === project.id) showTools(project.id);
     });
@@ -138,6 +190,9 @@
     }
   }
   render();
+  showSelectedProject();
+  backButton.addEventListener('click', backToProjects);
+  window.addEventListener('popstate', showSelectedProject);
   button.addEventListener('click', () => {
     resetDeleteView();
     deleteOpen.hidden = true;
@@ -196,6 +251,7 @@
       localStorage.setItem(KEY, JSON.stringify(next));
       projects = next;
       render();
+      showSelectedProject();
       dialog.close();
       setError(warning, '');
     } catch {
@@ -229,6 +285,7 @@
       localStorage.setItem(KEY, JSON.stringify(next));
       projects = next;
       render();
+      showSelectedProject();
       dialog.close();
       setError(warning, '');
     } catch {
