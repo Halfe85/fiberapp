@@ -18,8 +18,8 @@
   const addressStatus = document.getElementById('project-address-status');
   const addressScope = document.getElementById('project-address-scope');
   const addressSelected = document.getElementById('project-address-selected');
-  const parcelButton = document.getElementById('project-address-pick-parcel');
-  const parcelSelectedLabel = document.getElementById('project-address-parcel-selected');
+  const areaSelectedLabel = document.getElementById('project-address-area-selected');
+  const areaPanel = document.getElementById('project-address-map-panel');
   const equipmentPositionPicker = document.getElementById('project-equipment-position-picker');
   const note = document.getElementById('project-item-note');
   const typeFields = document.getElementById('project-equipment-type-fields');
@@ -44,8 +44,7 @@
   let currentKind = null;
   let selectedPosition = null;
   let selectedAddress = null;
-  let selectedParcel = null;
-  let selectingParcel = false;
+  let selectedArea = null;
   let searchSequence = 0;
   let searchTimer = null;
   let searchController = null;
@@ -135,15 +134,16 @@
         option.append(label,location);
         option.addEventListener('click', () => {
           selectedAddress = candidate;
-          selectedParcel = null;
-          parcelButton.disabled = false;
-          parcelButton.hidden = false;
-          parcelSelectedLabel.hidden = true;
+          selectedArea = null;
+          areaSelectedLabel.hidden = true;
           addressQuery.value = candidate.name;
           resetResults('');
           addressSelected.textContent = 'Valgt vegadresse: ' + candidate.name +
             (candidate.postcode ? ', ' + candidate.postcode : '');
           addressSelected.hidden = false;
+          window.dispatchEvent(new CustomEvent('fiberapp:planner-address-selected',{
+            detail:{projectId,address:candidate}
+          }));
         });
         item.append(option);
         addressResults.append(item);
@@ -160,10 +160,11 @@
   }
   function onAddressInput() {
     selectedAddress = null;
-    selectedParcel = null;
-    parcelButton.disabled = true;
-    parcelButton.hidden = true;
-    parcelSelectedLabel.hidden = true;
+    selectedArea = null;
+    areaSelectedLabel.hidden = true;
+    window.dispatchEvent(new CustomEvent('fiberapp:planner-address-clear',{
+      detail:{projectId:selectedProject()}
+    }));
     addressSelected.hidden = true;
     cancelSearch();
     const query = addressQuery.value.trim().replace(/\s+/g,' ');
@@ -226,11 +227,13 @@
           type.textContent = item.equipmentType;
           article.append(type);
         }
-        if (kind === 'address' && item.parcel?.propertyLabel) {
-          const parcel = document.createElement('span');
-          parcel.className = 'project-item-parcel';
-          parcel.textContent = 'Tomt: ' + item.parcel.propertyLabel;
-          article.append(parcel);
+        if (kind === 'address' && (item.area || item.parcel)) {
+          const area = item.area || item.parcel;
+          const areaInfo = document.createElement('span');
+          areaInfo.className = 'project-item-parcel';
+          areaInfo.textContent = (area.kind === 'building' ? 'Bygg' : 'Tomt') +
+            (area.propertyLabel ? ': ' + area.propertyLabel : ': tegnet område');
+          article.append(areaInfo);
         }
         if (Number.isFinite(item.latitude) && Number.isFinite(item.longitude)) {
           const location = document.createElement('span');
@@ -257,11 +260,8 @@
     currentKind = kind;
     selectedPosition = null;
     selectedAddress = null;
-    selectedParcel = null;
-    selectingParcel = false;
-    parcelButton.hidden = true;
-    parcelButton.disabled = true;
-    parcelSelectedLabel.hidden = true;
+    selectedArea = null;
+    areaSelectedLabel.hidden = true;
     cancelSearch();
     addressQuery.value = '';
     addressSelected.hidden = true;
@@ -271,6 +271,8 @@
       ? 'Søker kun i postnummer ' + postcode + '. Ingen leilighetsnummer.'
       : 'Prosjektet mangler postnummer. Søker i hele Norge, uten leilighetsnummer.';
     addressPanel.hidden = kind !== 'address';
+    areaPanel.hidden = kind !== 'address';
+    dialog.classList.toggle('address-mode',kind === 'address');
     equipmentNameFields.hidden = kind !== 'equipment';
     equipmentPositionPicker.hidden = kind !== 'equipment';
     name.required = kind === 'equipment';
@@ -280,6 +282,11 @@
     modalTitle.textContent = kind === 'address' ? 'Ny adresse' : 'Nytt utstyr';
     typeFields.hidden = kind !== 'equipment';
     dialog.showModal();
+    if (kind === 'address') {
+      window.dispatchEvent(new CustomEvent('fiberapp:planner-address-modal-open',{
+        detail:{projectId}
+      }));
+    }
     (kind === 'address' ? addressQuery : name).focus();
   }
   reload();
@@ -295,32 +302,15 @@
   document.getElementById('add-address').addEventListener('click', () => openModal('address'));
   document.getElementById('add-equipment').addEventListener('click', () => openModal('equipment'));
   addressQuery.addEventListener('input', onAddressInput);
-  parcelButton.addEventListener('click', () => {
-    const projectId = selectedProject();
-    if (!projectId || !selectedAddress || currentKind !== 'address') return;
-    const {latitude,longitude} = selectedAddress;
-    selectingParcel = true;
-    dialog.close();
-    window.dispatchEvent(new CustomEvent('fiberapp:planner-parcel-select-start', {
-      detail:{projectId,latitude,longitude}
-    }));
-  });
-  window.addEventListener('fiberapp:planner-parcel-selected', event => {
-    const detail = event.detail || {};
-    if (!selectingParcel || detail.projectId !== selectedProject() ||
-        !selectedAddress || currentKind !== 'address') return;
-    selectingParcel = false;
-    selectedParcel = detail.parcel;
-    parcelSelectedLabel.textContent = 'Valgt tomt: ' + (selectedParcel.propertyLabel || 'Eiendom');
-    parcelSelectedLabel.hidden = false;
-    dialog.showModal();
-    parcelButton.focus();
-  });
-  window.addEventListener('fiberapp:planner-parcel-cancelled', event => {
-    if (!selectingParcel || event.detail?.projectId !== selectedProject()) return;
-    selectingParcel = false;
-    dialog.showModal();
-    parcelButton.focus();
+  window.addEventListener('fiberapp:planner-address-area-selected',event=>{
+    if(currentKind !== 'address' || !selectedAddress ||
+       event.detail?.projectId !== selectedProject())return;
+    selectedArea=event.detail.area;
+    areaSelectedLabel.textContent=selectedArea
+      ? (selectedArea.kind === 'building' ? 'Bygg' : 'Tomt') +
+        ' valgt' + (selectedArea.propertyLabel ? ': '+selectedArea.propertyLabel : '')
+      : '';
+    areaSelectedLabel.hidden=!selectedArea;
   });
   pickLocation.addEventListener('click', () => {
     const projectId = selectedProject();
@@ -348,7 +338,10 @@
       toggle.focus();
     }
   });
-  dialog.addEventListener('close', cancelSearch);
+  dialog.addEventListener('close', ()=>{
+    cancelSearch();
+    window.dispatchEvent(new CustomEvent('fiberapp:planner-address-modal-close',{}));
+  });
   document.getElementById('project-item-close').addEventListener('click', () => dialog.close());
   document.getElementById('project-item-cancel').addEventListener('click', () => dialog.close());
   dialog.addEventListener('click', event => {
@@ -387,7 +380,7 @@
           poststed:selectedAddress.poststed,
           latitude:selectedAddress.latitude,longitude:selectedAddress.longitude,
           addressSource:'Kartverket',
-          ...(selectedParcel ? {parcel:selectedParcel} : {})
+          ...(selectedArea ? {area:selectedArea} : {})
         } : (selectedPosition || {})),
       createdAt:new Date().toISOString()
     }];

@@ -140,7 +140,7 @@
       marker.bindPopup(popupNode(item));
       marker.addTo(pins);
       bounds.push([item.latitude,item.longitude]);
-      const parcel=item.parcel;
+      const parcel=item.area || item.parcel;
       if(item.kind==='address' && savedParcels && parcel?.geometry &&
          ['Polygon','MultiPolygon'].includes(parcel.geometry.type)) {
         const key=parcel.propertyId || JSON.stringify(parcel.geometry);
