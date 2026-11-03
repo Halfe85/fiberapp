@@ -9,8 +9,6 @@ interface Snapshot{projects:Item[];buildings:Item[];entrances:Item[];apartments:
 const blank=():Snapshot=>({projects:[],buildings:[],entrances:[],apartments:[],equipment:[],ports:[],links:[],stats:{buildings:0,entrances:0,apartments:0,equipment:0,ports:0,freePorts:0,links:0}});
 @Component({selector:'app-planner',standalone:true,imports:[CommonModule,FormsModule],template:`
 <section class="page">
- <div class="eyebrow">VERKTØY / LOKAL PROSJEKTERING</div><h1>Fiber Planner</h1>
- <p class="lead">Dokumenter fiberanlegg for boligblokker. Data lagres kun i nettleserens lokale SQLite-database.</p>
  <div *ngIf="loading" class="notice" role="status">Åpner lokal database …</div>
  <div *ngIf="error" class="notice error" role="alert">{{error}}</div>
  <div *ngIf="ready">

@@ -83,3 +83,40 @@ header.site-header{position:relative;z-index:30}
  .site-header .site-actions .home-link{flex-basis:40px}
  .site-header .site-brand{font-size:15px}
 }
+
+
+/* Fiber Planner: page title is in the fixed header, not the scrolling main. */
+.planner-header .site-page-title{
+  position:absolute;
+  left:calc(clamp(14px,2.2vw,32px) + 108px);
+  top:50%;
+  transform:translateY(-50%);
+  max-width:calc(50% - 144px);
+  margin:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:#172b41;
+  font-size:clamp(22px,2.4vw,30px);
+  font-weight:800;
+  letter-spacing:-.035em;
+  line-height:1.2;
+  pointer-events:none;
+}
+.planner-footer .site-shell{min-height:20px;padding-top:0;padding-bottom:0}
+@media(max-width:699px){
+  .planner-header .site-shell{grid-template-rows:44px auto;row-gap:0}
+  .planner-header .site-page-title{
+    position:static;
+    grid-column:1/-1;
+    grid-row:2;
+    transform:none;
+    justify-self:start;
+    max-width:100%;
+    padding:0 0 7px;
+    overflow:visible;
+    white-space:normal;
+    font-size:21px;
+  }
+  .planner-footer .site-shell{min-height:calc(18px + env(safe-area-inset-bottom,0px));padding:0}
+}

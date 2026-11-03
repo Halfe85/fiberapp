@@ -187,3 +187,40 @@ app-root>.footer,app-root>.home-bottom-bar{position:relative;flex-shrink:0}
  .topbar .left-actions .home-link{flex-basis:40px}
  .topbar .brand{font-size:15px}
 }
+
+
+/* Fiber Planner: header title with centered brand and a compact blank footer. */
+.topbar.planner-header .header-page-title{
+  position:absolute;
+  left:calc(clamp(14px,2.2vw,32px) + 108px);
+  top:50%;
+  transform:translateY(-50%);
+  max-width:calc(50% - 144px);
+  margin:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:#172b41;
+  font-size:clamp(22px,2.4vw,30px);
+  font-weight:800;
+  letter-spacing:-.035em;
+  line-height:1.2;
+  pointer-events:none;
+}
+app-root>footer.planner-footer{padding:0;min-height:20px;background:#edf4fb;border-top:1px solid #d4e1ee}
+@media(max-width:699px){
+  .topbar.planner-header .topinner{grid-template-rows:44px auto;row-gap:0}
+  .topbar.planner-header .header-page-title{
+    position:static;
+    grid-column:1/-1;
+    grid-row:2;
+    transform:none;
+    justify-self:start;
+    max-width:100%;
+    padding:0 0 7px;
+    overflow:visible;
+    white-space:normal;
+    font-size:21px;
+  }
+  app-root>footer.planner-footer{min-height:calc(18px + env(safe-area-inset-bottom,0px))}
+}
