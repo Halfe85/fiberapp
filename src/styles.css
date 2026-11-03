@@ -127,3 +127,11 @@ app-root>main{
 app-home{flex:1 0 auto;min-width:0;width:100%}
 app-finder,app-planner{display:block;min-width:0;width:100%;flex:none}
 app-root>.footer,app-root>.home-bottom-bar{position:relative;flex-shrink:0}
+
+/* One home control in the fixed header for Finder, Planner and the homepage. */
+.topinner nav .home-link{gap:7px}
+.topinner nav .home-link svg{width:19px;height:19px;flex:none}
+@media(max-width:699px){
+ .topinner nav .home-link{flex:0 0 44px;padding:9px}
+ .topinner nav .home-link span{display:none}
+}
