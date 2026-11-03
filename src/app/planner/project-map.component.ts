@@ -8,9 +8,12 @@ interface ProjectMapItem {
   name:string;
   latitude?:number;
   longitude?:number;
+  parcel?:{propertyId:string;propertyLabel:string;
+    geometry:{type:'Polygon'|'MultiPolygon';coordinates:unknown[]}};
 }
 const ITEM_KEY='fiberapp.planner.items.v1';
 const POSTCODE_API='https://api.kartverket.no/adresser/v1/sok';
+const PARCEL_API='https://api.kartverket.no/eiendom/v1/punkt/omrader';
 const POSTCODE_PAGE_SIZE=50;
 const KARTVERKET_WMTS='https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png';
 
@@ -20,6 +23,10 @@ const KARTVERKET_WMTS='https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/we
   imports:[CommonModule],
   template:`
     <section class="planner-map-section" aria-label="Prosjektkart">
+      <div class="planner-parcel-toolbar" *ngIf="selectingParcel">
+        <span role="status" aria-live="polite">{{parcelStatus}}</span>
+        <button type="button" class="secondary" (click)="stopParcelSelection(true)">Avbryt tomtevalg</button>
+      </div>
       <div class="planner-map" #mapHost role="region" aria-label="Kartverket prosjektkart"></div>
       <p class="planner-map-message" role="status" aria-live="polite" #message></p>
     </section>
@@ -32,6 +39,11 @@ export class ProjectMapComponent implements AfterViewInit,OnChanges,OnDestroy {
   @ViewChild('message') message!:ElementRef<HTMLElement>;
   private map:any=null;
   private pins:any=null;
+  private savedParcels:any=null;
+  private parcelCandidates:any=null;
+  selectingParcel=false;
+  parcelStatus='';
+  private parcelToken=0;
   private picking=false;
   private destroyed=false;
   private postcodeRequest=0;
@@ -70,6 +82,8 @@ export class ProjectMapComponent implements AfterViewInit,OnChanges,OnDestroy {
       attribution:'&copy; <a href="https://www.kartverket.no/" target="_blank" rel="noopener noreferrer">Kartverket</a>',
       minZoom:3,maxZoom:19,maxNativeZoom:18
     }).addTo(this.map);
+    this.savedParcels=L.layerGroup().addTo(this.map);
+    this.parcelCandidates=L.layerGroup().addTo(this.map);
     this.pins=L.layerGroup().addTo(this.map);
     this.map.on('click',(event:any)=>{
       if(!this.picking)return;
@@ -171,6 +185,8 @@ export class ProjectMapComponent implements AfterViewInit,OnChanges,OnDestroy {
   private refreshPins(fit:boolean):void {
     if(!this.map || !this.pins)return;
     this.pins.clearLayers();
+    this.savedParcels?.clearLayers();
+    const parcelKeys=new Set<string>();
     let parsed:unknown=[];
     try {
       const raw=localStorage.getItem(ITEM_KEY);
@@ -199,11 +215,112 @@ export class ProjectMapComponent implements AfterViewInit,OnChanges,OnDestroy {
       popup.append(label,type);
       dot.bindPopup(popup).addTo(this.pins);
       bounds.push([latitude,longitude]);
+      const parcel=value.parcel;
+      if(value.kind==='address' && parcel?.geometry &&
+         ['Polygon','MultiPolygon'].includes(parcel.geometry.type)){
+        const key=parcel.propertyId || JSON.stringify(parcel.geometry);
+        if(!parcelKeys.has(key)){
+          parcelKeys.add(key);
+          try{
+            L.geoJSON({type:'Feature',properties:{},geometry:parcel.geometry},{
+              style:{color:'#267e52',weight:3,fillColor:'#5eaa7e',
+                fillOpacity:.18,interactive:false}
+            }).addTo(this.savedParcels);
+          }catch{/* A malformed saved polygon cannot prevent map loading. */}
+        }
+      }
     }
     if(fit){
       if(bounds.length===1)this.map.setView(bounds[0],14);
       else if(bounds.length>1)this.map.fitBounds(bounds,{padding:[40,40],maxZoom:15});
       else this.map.setView([64,11],5);
+    }
+  }
+
+  stopParcelSelection(notify:boolean):void {
+    this.parcelToken++;
+    this.selectingParcel=false;
+    this.parcelCandidates?.clearLayers();
+    if(notify){
+      window.dispatchEvent(new CustomEvent('fiberapp:planner-parcel-cancelled',{
+        detail:{projectId:this.projectId}
+      }));
+    }
+  }
+  @HostListener('window:fiberapp:planner-parcel-select-start',['$event'])
+  async onParcelSelectStart(event:Event):Promise<void> {
+    const detail=(event as CustomEvent<{
+      projectId:string;latitude:number;longitude:number
+    }>).detail;
+    if(!detail || detail.projectId!==this.projectId || !this.map || !this.parcelCandidates ||
+       !Number.isFinite(detail.latitude) || !Number.isFinite(detail.longitude))return;
+    this.picking=false;
+    this.selectingParcel=true;
+    this.parcelStatus='Henter eiendomsgrenser fra Kartverket …';
+    const request=++this.parcelToken;
+    this.postcodeRequest++; // A slow postcode response may not override the parcel viewport.
+    this.parcelCandidates.clearLayers();
+    this.map.invalidateSize({pan:false});
+    this.map.setView([detail.latitude,detail.longitude],18);
+    this.mapHost.nativeElement.scrollIntoView({behavior:'smooth',block:'nearest'});
+    const params=new URLSearchParams({
+      nord:String(detail.latitude),ost:String(detail.longitude),koordsys:'4258',
+      utkoordsys:'4258',radius:'100',maksTreff:'40'
+    });
+    try{
+      const response=await fetch(PARCEL_API+'?'+params.toString(),{
+        headers:{Accept:'application/json'}
+      });
+      if(!response.ok)throw new Error('Kartverket eiendom: '+response.status);
+      const result:unknown=await response.json();
+      if(this.destroyed || request!==this.parcelToken ||
+         !this.selectingParcel || detail.projectId!==this.projectId)return;
+      const features=(result as {features?:unknown[]})?.features;
+      const L=(window as any).L;
+      let count=0;
+      for(const value of Array.isArray(features)?features:[]){
+        if(!value || typeof value!=='object')continue;
+        const feature=value as {
+          geometry?:{type:string;coordinates:unknown[]};
+          properties?:{matrikkelnummertekst?:unknown;lokalid?:unknown}
+        };
+        const geometry=feature.geometry;
+        if(!geometry || !['Polygon','MultiPolygon'].includes(geometry.type) ||
+           !Array.isArray(geometry.coordinates))continue;
+        if(JSON.stringify(geometry).length>150000)continue;
+        const label=String(feature.properties?.matrikkelnummertekst ||
+          'Eiendom '+(count+1)).slice(0,120);
+        const propertyId=feature.properties?.lokalid==null
+          ? '':String(feature.properties.lokalid);
+        try{
+          const layer=L.geoJSON(value,{
+            style:{color:'#087bb6',weight:2,fillColor:'#55b9e6',fillOpacity:.16}
+          });
+          layer.eachLayer((path:any)=>{
+            path.on('mouseover',()=>path.setStyle({
+              color:'#e98b17',weight:4,fillOpacity:.3
+            }));
+            path.on('mouseout',()=>path.setStyle({
+              color:'#087bb6',weight:2,fillOpacity:.16
+            }));
+            path.on('click',()=>{
+              const parcel={propertyId,propertyLabel:label,geometry};
+              this.stopParcelSelection(false);
+              window.dispatchEvent(new CustomEvent('fiberapp:planner-parcel-selected',{
+                detail:{projectId:this.projectId,parcel}
+              }));
+            });
+          });
+          layer.addTo(this.parcelCandidates);
+          count++;
+        }catch{/* Invalid features are safely ignored. */}
+      }
+      this.parcelStatus=count
+        ? 'Velg riktig tomt ved å trykke på en blå flate ('+count+' tilgjengelige).'
+        : 'Ingen tomteflater funnet her. Avbryt og lagre adressen som punkt.';
+    }catch{
+      if(this.destroyed || request!==this.parcelToken)return;
+      this.parcelStatus='Kunne ikke hente eiendomsgrenser. Avbryt og lagre adressen som punkt.';
     }
   }
 
@@ -229,6 +346,7 @@ export class ProjectMapComponent implements AfterViewInit,OnChanges,OnDestroy {
   ngOnDestroy():void {
     this.destroyed=true;
     this.postcodeRequest++;
+    this.stopParcelSelection(false);
     if(typeof document!=='undefined'){
       const script=document.querySelector('script[src*="leaflet@1.9.4/dist/leaflet.js"]');
       script?.removeEventListener('load',this.onScriptLoad);
