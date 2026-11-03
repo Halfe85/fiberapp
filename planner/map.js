@@ -30,6 +30,7 @@
   let parcelToken=0;
   let ready=false;
   let postcodeRequest=0;
+  let lastAddressSignature='[]';
   const postcodeCache=new Map();
 
   function loadItems(){
@@ -41,6 +42,25 @@
       message.textContent='Kunne ikke lese kartpunkter fra lokal lagring.';
       return [];
     }
+  }
+  // Addresses determine the viewport. Equipment remains visible but never
+  // changes the address-focused zoom, even if equipment is far away.
+  function addressLocations(id){
+    if(!id)return [];
+    return loadItems().filter(item=>item && item.projectId===id &&
+      item.kind==='address' && valid(item))
+      .map(item=>[item.latitude,item.longitude]);
+  }
+  function focusAddresses(locations){
+    if(!map || !locations.length)return false;
+    if(locations.length===1){
+      map.setView(locations[0],18);
+      message.textContent='Viser prosjektets adresse.';
+    }else{
+      map.fitBounds(locations,{padding:[40,40],maxZoom:17});
+      message.textContent='Viser alle '+locations.length+' registrerte adresser i prosjektet.';
+    }
+    return true;
   }
   function getPostcode(id){
     if(!id)return '';
@@ -95,7 +115,8 @@
     try{
       const bounds=await lookupPostcode(postcode);
       if(request!==postcodeRequest || id!==getProjectId() ||
-         postcode!==getPostcode(id) || !map || choosing)return;
+         postcode!==getPostcode(id) || addressLocations(id).length ||
+         !map || choosing || selectingParcel)return;
       if(!bounds){
         updatePins(true);
         message.textContent='Ingen kartfestede vegadresser funnet for postnummer '+postcode+
@@ -205,6 +226,8 @@
     message.textContent=defaultMessage;
     const projectId=getProjectId();
     const postcode=getPostcode(projectId);
+    const locations=addressLocations(projectId);
+    lastAddressSignature=JSON.stringify(locations);
     // Incrementing invalidates delayed replies from the project we just left.
     const request=++postcodeRequest;
     if(!projectId)return;
@@ -217,6 +240,8 @@
       if(!map)return;
       map.invalidateSize({pan:false});
       updatePins(false);
+      // Postnummer is the initial fallback only for projects without addresses.
+      if(focusAddresses(locations))return;
       if(postcode)void zoomToPostcode(projectId,postcode,request);
       else updatePins(true);
     });
@@ -314,7 +339,23 @@
     element.scrollIntoView({behavior:'smooth',block:'nearest'});
   });
   window.addEventListener('fiberapp:planner-project-changed',updateProject);
-  window.addEventListener('fiberapp:planner-items-changed',updatePins);
+  window.addEventListener('fiberapp:planner-items-changed',event=>{
+    const projectId=getProjectId();
+    if(!projectId || event.detail?.projectId!==projectId || !map)return;
+    // A newly saved address is already in localStorage when this event fires.
+    const locations=addressLocations(projectId);
+    const signature=JSON.stringify(locations);
+    const addressesChanged=signature!==lastAddressSignature;
+    lastAddressSignature=signature;
+    updatePins(false);
+    if(!addressesChanged || choosing || selectingParcel)return;
+    const request=++postcodeRequest; // Prevent slow postcode replies from resetting the zoom.
+    map.invalidateSize({pan:false});
+    if(focusAddresses(locations))return;
+    const postcode=getPostcode(projectId);
+    if(postcode)void zoomToPostcode(projectId,postcode,request);
+    else updatePins(true);
+  });
   window.addEventListener('popstate',updateProject);
   updateProject();
 })();

@@ -50,6 +50,7 @@ export class ProjectMapComponent implements AfterViewInit,OnChanges,OnDestroy {
   private picking=false;
   private destroyed=false;
   private postcodeRequest=0;
+  private lastAddressSignature='[]';
   private readonly postcodeCache=new Map<string,number[][]>();
   private readonly instruction='Naviger i kartet. Plasser adresser eller utstyr via + i headeren.';
   private onScriptLoad=()=>this.createMap();
@@ -143,6 +144,34 @@ export class ProjectMapComponent implements AfterViewInit,OnChanges,OnDestroy {
     this.postcodeCache.set(postcode,bounds);
     return bounds;
   }
+  private addressLocations():number[][] {
+    let parsed:unknown=[];
+    try {
+      const raw=localStorage.getItem(ITEM_KEY);
+      parsed=raw?JSON.parse(raw):[];
+    }catch {return [];}
+    if(!Array.isArray(parsed))return [];
+    return (parsed as ProjectMapItem[])
+      .filter(item=>item && item.projectId===this.projectId &&
+        item.kind==='address' && Number.isFinite(item.latitude) &&
+        Number.isFinite(item.longitude) &&
+        Math.abs(item.latitude as number)<=90 &&
+        Math.abs(item.longitude as number)<=180)
+      .map(item=>[item.latitude as number,item.longitude as number]);
+  }
+  private focusAddresses(locations:number[][]):boolean {
+    if(!this.map || !locations.length)return false;
+    if(locations.length===1){
+      this.map.setView(locations[0],18);
+      this.message.nativeElement.textContent='Viser prosjektets adresse.';
+    }else{
+      this.map.fitBounds(locations,{padding:[40,40],maxZoom:17});
+      this.message.nativeElement.textContent=
+        'Viser alle '+locations.length+' registrerte adresser i prosjektet.';
+    }
+    return true;
+  }
+
   private scheduleViewport():void {
     if(!this.map || this.destroyed)return;
     const request=++this.postcodeRequest;
@@ -151,6 +180,10 @@ export class ProjectMapComponent implements AfterViewInit,OnChanges,OnDestroy {
       if(this.destroyed || !this.map || request!==this.postcodeRequest)return;
       this.map.invalidateSize({pan:false});
       this.refreshPins(false);
+      const locations=this.addressLocations();
+      this.lastAddressSignature=JSON.stringify(locations);
+      // A postal-code viewport is needed only before the first address exists.
+      if(this.focusAddresses(locations))return;
       if(/^[0-9]{4}$/.test(this.postcode)){
         void this.focusPostcode(request);
       }else{
@@ -167,7 +200,9 @@ export class ProjectMapComponent implements AfterViewInit,OnChanges,OnDestroy {
     try{
       const bounds=await this.lookupPostcode(postcode);
       if(this.destroyed || request!==this.postcodeRequest ||
-         id!==this.projectId || postcode!==this.postcode || !this.map || this.picking)return;
+         id!==this.projectId || postcode!==this.postcode ||
+         this.addressLocations().length || !this.map || this.picking ||
+         this.selectingParcel)return;
       if(!bounds){
         this.refreshPins(true);
         this.message.nativeElement.textContent='Ingen kartfestede vegadresser funnet for postnummer '+
@@ -346,8 +381,22 @@ export class ProjectMapComponent implements AfterViewInit,OnChanges,OnDestroy {
     this.mapHost.nativeElement.scrollIntoView({behavior:'smooth',block:'nearest'});
   }
 
-  @HostListener('window:fiberapp:planner-items-changed')
-  onItemsChanged():void {this.refreshPins(false);}
+  @HostListener('window:fiberapp:planner-items-changed',['$event'])
+  onItemsChanged(event:Event):void {
+    const detail=(event as CustomEvent<{projectId:string}>).detail;
+    if(detail?.projectId!==this.projectId || !this.map || this.destroyed)return;
+    const locations=this.addressLocations();
+    const signature=JSON.stringify(locations);
+    const addressesChanged=signature!==this.lastAddressSignature;
+    this.lastAddressSignature=signature;
+    this.refreshPins(false);
+    if(!addressesChanged || this.picking || this.selectingParcel)return;
+    const request=++this.postcodeRequest;
+    this.map.invalidateSize({pan:false});
+    if(this.focusAddresses(locations))return;
+    if(/^[0-9]{4}$/.test(this.postcode))void this.focusPostcode(request);
+    else this.refreshPins(true);
+  }
 
   ngOnDestroy():void {
     this.destroyed=true;
