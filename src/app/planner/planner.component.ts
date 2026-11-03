@@ -60,10 +60,10 @@ const STORAGE_KEY='fiberapp.planner.projects.v1';
     <section class="planner-modal" role="dialog" aria-modal="true"
              aria-labelledby="planner-dialog-title" (click)="$event.stopPropagation()">
       <div class="dialog-head">
-        <h2 id="planner-dialog-title">{{editingId ? 'Prosjektinnstillinger' : 'Nytt prosjekt'}}</h2>
+        <h2 id="planner-dialog-title">{{deleting ? 'Slett prosjekt' : (editingId ? 'Prosjektinnstillinger' : 'Nytt prosjekt')}}</h2>
         <button type="button" class="close-button" aria-label="Lukk" (click)="close()">×</button>
       </div>
-      <form (ngSubmit)="createProject()">
+      <form *ngIf="!deleting" (ngSubmit)="createProject()">
         <label for="ng-project-name">Prosjektnavn *</label>
         <input id="ng-project-name" name="name" type="text" required maxlength="80"
                [(ngModel)]="name" autocomplete="off" autofocus placeholder="F.eks. Solsiden borettslag">
@@ -72,8 +72,23 @@ const STORAGE_KEY='fiberapp.planner.projects.v1';
                   maxlength="300" rows="3" placeholder="Kort beskrivelse av prosjektet"></textarea>
         <div class="notice error" *ngIf="formError" role="alert">{{formError}}</div>
         <div class="dialog-actions">
+          <button *ngIf="editingId" type="button" class="delete-open-button" (click)="requestDelete()">Slett prosjekt</button>
           <button type="button" class="secondary" (click)="close()">Avbryt</button>
           <button type="submit" [disabled]="!name.trim() || !storageAvailable">{{editingId ? 'Lagre endringer' : 'Opprett prosjekt'}}</button>
+        </div>
+      </form>
+      <form *ngIf="deleting" class="delete-project-form" (ngSubmit)="confirmDelete()">
+        <p class="delete-warning">Dette sletter prosjektet permanent fra denne nettleseren. Skriv inn prosjektets navn nøyaktig for å bekrefte.</p>
+        <p class="delete-target-name"><strong id="ng-delete-project-target">{{deletionTargetName}}</strong></p>
+        <label for="ng-delete-project-name">Skriv inn prosjektnavnet for å slette</label>
+        <input id="ng-delete-project-name" name="confirmation" type="text"
+               [(ngModel)]="deleteConfirmation" autocomplete="off" spellcheck="false"
+               aria-describedby="ng-delete-project-target" required>
+        <div class="notice error" *ngIf="deleteError" role="alert">{{deleteError}}</div>
+        <div class="dialog-actions">
+          <button type="button" class="secondary" (click)="cancelDelete()">Tilbake</button>
+          <button type="submit" class="delete-confirm-button"
+                  [disabled]="!storageAvailable || !deletionTargetName || deleteConfirmation !== deletionTargetName">Slett prosjekt</button>
         </div>
       </form>
     </section>
@@ -89,10 +104,16 @@ export class PlannerComponent implements OnInit {
   storageAvailable=true;
   openProjectId:string|null=null;
   editingId:string|null=null;
+  deleting=false;
+  deleteConfirmation='';
+  deleteError='';
   pointerStart:{x:number;y:number;pointerId:number;projectId:string}|null=null;
   constructor(public readonly ui:PlannerUiService){}
   get sortedProjects():Project[]{
     return [...this.projects].sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
+  }
+  get deletionTargetName():string{
+    return this.projects.find(p=>p.id===this.editingId)?.name||'';
   }
   trackId(_index:number,item:Project):string{return item.id;}
   formatDate(value:string):string{
@@ -129,15 +150,52 @@ export class PlannerComponent implements OnInit {
     else if(this.openProjectId===id)this.openProjectId=null;
   }
   openSettings(item:Project):void{
+    this.deleting=false;
+    this.deleteConfirmation='';
+    this.deleteError='';
     this.editingId=item.id;
     this.name=item.name;
     this.description=item.description||'';
     this.formError='';
     this.ui.openCreate();
   }
+  requestDelete():void{
+    if(!this.storageAvailable || !this.editingId || !this.deletionTargetName){
+      this.formError='Prosjektet finnes ikke lenger eller lokal lagring er utilgjengelig.';
+      return;
+    }
+    this.deleteConfirmation='';
+    this.deleteError='';
+    this.deleting=true;
+  }
+  cancelDelete():void{
+    this.deleting=false;
+    this.deleteConfirmation='';
+    this.deleteError='';
+  }
+  confirmDelete():void{
+    const project=this.projects.find(p=>p.id===this.editingId);
+    if(!this.storageAvailable || !project || this.deleteConfirmation!==project.name){
+      this.deleteError='Prosjektnavnet må være identisk med det som vises over.';
+      return;
+    }
+    const next=this.projects.filter(p=>p.id!==project.id);
+    try{
+      localStorage.setItem(STORAGE_KEY,JSON.stringify(next));
+      this.projects=next;
+      this.error='';
+      this.openProjectId=null;
+      this.close();
+    }catch{
+      this.deleteError='Prosjektet kunne ikke slettes. Kontroller nettleserlagringen.';
+    }
+  }
   close():void{
     this.ui.closeCreate();
     this.editingId=null;
+    this.deleting=false;
+    this.deleteConfirmation='';
+    this.deleteError='';
     this.name='';
     this.description='';
     this.formError='';

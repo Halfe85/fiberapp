@@ -375,3 +375,17 @@ app-planner .project-swipe:focus-within .project-row{transform:translateX(-76px)
 @media(prefers-reduced-motion:reduce){
   app-planner .project-swipe .project-row{transition:none}
 }
+
+/* Planner edit dialog: exact project-name confirmation for destructive delete. */
+app-planner .delete-open-button{margin-right:auto;background:#fff0f0;color:#a52828}
+app-planner .delete-open-button:hover{background:#ffe0e0}
+app-planner .delete-warning{margin:4px 0 10px;color:#9d3030;line-height:1.5;font-size:14px}
+app-planner .delete-target-name{padding:12px 14px;margin:0;border-radius:10px;
+  background:#f2f6fa;color:#243b52;overflow-wrap:anywhere}
+app-planner .delete-target-name strong{font-weight:800}
+app-planner .delete-confirm-button{background:#ab2727;color:#fff}
+app-planner .delete-confirm-button:hover:not(:disabled){background:#8e1d1d}
+app-planner .delete-confirm-button:disabled{opacity:.45;cursor:not-allowed}
+@media(max-width:699px){
+  app-planner .delete-open-button{width:100%;flex:1 0 100%;margin-right:0}
+}

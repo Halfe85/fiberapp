@@ -13,7 +13,14 @@
   const formError = document.getElementById('project-form-error');
   const title = document.getElementById('project-dialog-title');
   const submit = form.querySelector('button[type="submit"]');
-  if (!button || !dialog || !form || !list) return;
+  const deleteOpen = document.getElementById('project-delete-open');
+  const deleteForm = document.getElementById('project-delete-form');
+  const deleteInput = document.getElementById('project-delete-name');
+  const deleteTarget = document.getElementById('project-delete-target');
+  const deleteConfirm = document.getElementById('project-delete-confirm');
+  const deleteError = document.getElementById('project-delete-error');
+  const deleteBack = document.getElementById('project-delete-back');
+  if (!button || !dialog || !form || !list || !deleteForm || !deleteInput || !deleteConfirm) return;
   const setError = (el, message) => {el.textContent = message; el.hidden = !message;};
   const wrenchSvg = "<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-7.8 7.8a2.12 2.12 0 0 1-3-3l7.8-7.8a6 6 0 0 1 7.9-7.9z\"/></svg>";
   let projects = [];
@@ -40,7 +47,16 @@
       row.classList.toggle('open', open);
     }
   }
+  function resetDeleteView() {
+    deleteForm.hidden = true;
+    form.hidden = false;
+    deleteInput.value = '';
+    deleteConfirm.disabled = true;
+    setError(deleteError, '');
+  }
   function startSettings(project) {
+    resetDeleteView();
+    deleteOpen.hidden = false;
     editingId = project.id;
     title.textContent = 'Prosjektinnstillinger';
     submit.textContent = 'Lagre endringer';
@@ -116,6 +132,8 @@
   }
   render();
   button.addEventListener('click', () => {
+    resetDeleteView();
+    deleteOpen.hidden = true;
     editingId = null;
     title.textContent = 'Nytt prosjekt';
     submit.textContent = 'Opprett prosjekt';
@@ -130,7 +148,53 @@
   dialog.addEventListener('click', event => {
     if (event.target === dialog) dialog.close();
   });
-  dialog.addEventListener('close', () => {editingId = null;});
+  dialog.addEventListener('close', () => {
+    editingId = null;
+    resetDeleteView();
+  });
+  deleteOpen.addEventListener('click', () => {
+    const project = projects.find(p => p.id === editingId);
+    if (!project || !storageAvailable) {
+      setError(formError, 'Prosjektet finnes ikke lenger eller lokal lagring er utilgjengelig.');
+      return;
+    }
+    title.textContent = 'Slett prosjekt';
+    deleteTarget.textContent = project.name;
+    setError(deleteError, '');
+    deleteInput.value = '';
+    deleteConfirm.disabled = true;
+    form.hidden = true;
+    deleteForm.hidden = false;
+    deleteInput.focus();
+  });
+  deleteBack.addEventListener('click', () => {
+    resetDeleteView();
+    title.textContent = 'Prosjektinnstillinger';
+    input.focus();
+  });
+  deleteInput.addEventListener('input', () => {
+    const project = projects.find(p => p.id === editingId);
+    deleteConfirm.disabled = !storageAvailable || !project || deleteInput.value !== project.name;
+    setError(deleteError, '');
+  });
+  deleteForm.addEventListener('submit', event => {
+    event.preventDefault();
+    const project = projects.find(p => p.id === editingId);
+    if (!storageAvailable || !project || deleteInput.value !== project.name) {
+      setError(deleteError, 'Prosjektnavnet må være identisk med det som vises over.');
+      return;
+    }
+    const next = projects.filter(p => p.id !== project.id);
+    try {
+      localStorage.setItem(KEY, JSON.stringify(next));
+      projects = next;
+      render();
+      dialog.close();
+      setError(warning, '');
+    } catch {
+      setError(deleteError, 'Prosjektet kunne ikke slettes. Kontroller nettleserlagringen.');
+    }
+  });
   document.addEventListener('pointerdown', event => {
     if (openId && !event.target.closest('.project-swipe')) showTools(openId);
   });

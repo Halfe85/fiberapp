@@ -68,3 +68,17 @@
  .project-swipe .project-row time{white-space:normal}
 }
 @media(prefers-reduced-motion:reduce){.project-swipe .project-row{transition:none}}
+
+/* Project deletion is available only when editing and requires exact-name confirmation. */
+.project-dialog .delete-open-button{margin-right:auto;background:#fff0f0;color:#a52828}
+.project-dialog .delete-open-button:hover{background:#ffe0e0}
+.project-dialog .delete-warning{margin:4px 0 10px;line-height:1.5;color:#9d3030;font-size:14px}
+.project-dialog .delete-target-name{margin:0;padding:12px 14px;border-radius:10px;background:#f2f6fa;
+  color:#243b52;overflow-wrap:anywhere}
+.project-dialog .delete-target-name strong{font-weight:800}
+.project-dialog .delete-confirm-button{background:#ab2727;color:#fff}
+.project-dialog .delete-confirm-button:hover:not(:disabled){background:#8e1d1d}
+.project-dialog .delete-confirm-button:disabled{opacity:.45;cursor:not-allowed}
+@media(max-width:699px){
+ .project-dialog .delete-open-button{width:100%;flex:1 0 100%;margin-right:0}
+}
