@@ -761,3 +761,35 @@ app-project-items .planner-items-empty{
   }
   app-planner .planner-workspace-grid > .project-map-column{grid-column:1;grid-row:4}
 }
+
+/* Address editing is separate from selecting an address on the map. */
+app-project-items .planner-address-row{position:relative}
+app-project-items .planner-address-row .planner-address-focus{padding-right:60px}
+app-project-items .planner-address-edit-tool{
+  position:absolute;
+  top:50%;right:7px;transform:translateY(-50%);
+  display:grid;place-items:center;
+  width:42px;height:42px;padding:10px;
+  border:0;border-radius:9px;
+  background:#eaf1f8;color:#365570;
+  cursor:pointer;z-index:1;
+  opacity:0;pointer-events:none;
+  transition:opacity .18s ease,background-color .18s ease;
+}
+app-project-items .planner-address-edit-tool svg{width:20px;height:20px}
+app-project-items .planner-address-row:hover .planner-address-edit-tool,
+app-project-items .planner-address-row:focus-within .planner-address-edit-tool{
+  opacity:1;pointer-events:auto;
+}
+app-project-items .planner-address-edit-tool:hover{background:#d7e8f5;color:#155f9b}
+app-project-items .planner-address-edit-tool:focus-visible{
+  opacity:1;pointer-events:auto;outline:2px solid #247db7;outline-offset:2px;
+}
+@media(hover:none),(pointer:coarse){
+  app-project-items .planner-address-edit-tool{opacity:1;pointer-events:auto}
+}
+@media(prefers-reduced-motion:reduce){
+  app-project-items .planner-address-edit-tool{transition:none}
+}
+app-project-items .planner-address-edit-modal{min-height:170px}
+app-project-items .planner-address-edit-modal .dialog-head{margin-bottom:0}

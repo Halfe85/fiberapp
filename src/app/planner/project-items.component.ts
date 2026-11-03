@@ -1,5 +1,5 @@
 import {CommonModule} from '@angular/common';
-import {Component,HostListener,Input,OnDestroy,OnInit} from '@angular/core';
+import {Component,ElementRef,HostListener,Input,OnDestroy,OnInit,ViewChild} from '@angular/core';
 import {FormsModule} from '@angular/forms';
 import {PlannerUiService} from './planner-ui.service';
 import {AddressAreaMapComponent,SelectedArea} from './address-area-map.component';
@@ -71,6 +71,15 @@ const ADDRESS_API='https://api.kartverket.no/adresser/v1/sok';
               </span>
               <span class="planner-item-note" *ngIf="item.note">{{item.note}}</span>
             </button>
+            <button type="button" class="planner-address-edit-tool"
+                    [attr.aria-label]="'Rediger adresse: '+item.name"
+                    title="Rediger adresse" (click)="openAddressEditor(item,$event)">
+              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none"
+                   stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                   stroke-linejoin="round">
+                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-7.8 7.8a2.12 2.12 0 0 1-3-3l7.8-7.8a6 6 0 0 1 7.9-7.9z"/>
+              </svg>
+            </button>
           </article>
           <p class="planner-items-empty" *ngIf="!addressItems.length">Ingen adresser lagt til ennå.</p>
         </div>
@@ -87,6 +96,17 @@ const ADDRESS_API='https://api.kartverket.no/adresser/v1/sok';
       </section>
     </div>
     <div class="notice error" *ngIf="storageError" role="alert">{{storageError}}</div>
+    <div class="planner-modal-backdrop" *ngIf="editingAddress" (click)="closeAddressEditor()">
+      <section class="planner-modal planner-address-edit-modal"
+               role="dialog" aria-modal="true" aria-labelledby="ng-address-edit-title"
+               (click)="$event.stopPropagation()">
+        <div class="dialog-head">
+          <h2 id="ng-address-edit-title">Rediger adresse</h2>
+          <button #addressEditClose type="button" class="close-button" aria-label="Lukk"
+                  (click)="closeAddressEditor()">×</button>
+        </div>
+      </section>
+    </div>
     <div class="planner-modal-backdrop" *ngIf="ui.itemModal()" (click)="close()">
       <section class="planner-modal planner-item-modal"
                [class.address-mode]="ui.itemModal()==='address'"
@@ -168,6 +188,11 @@ const ADDRESS_API='https://api.kartverket.no/adresser/v1/sok';
 export class ProjectItemsComponent implements OnInit,OnDestroy {
   @Input({required:true}) projectId!:string;
   items:ProjectItem[]=[];
+  editingAddress:ProjectItem|null=null;
+  private editorTrigger:HTMLElement|null=null;
+  @ViewChild('addressEditClose') set addressEditClose(ref:ElementRef<HTMLButtonElement>|undefined){
+    if(ref)ref.nativeElement.focus();
+  }
   canSave=true;
   storageError='';
   modalError='';
@@ -306,6 +331,20 @@ export class ProjectItemsComponent implements OnInit,OnDestroy {
       Number.isFinite(item.latitude) && Number.isFinite(item.longitude) &&
       Math.abs(item.latitude as number)<=90 && Math.abs(item.longitude as number)<=180;
   }
+  openAddressEditor(item:ProjectItem,event:MouseEvent):void {
+    // Placeholder editor: opening the dialog never mutates the saved address.
+    if(item.kind!=='address' || item.projectId!==this.projectId ||
+       !this.items.some(entry=>entry.id===item.id && entry.projectId===this.projectId))return;
+    const trigger=event.currentTarget;
+    this.editorTrigger=trigger instanceof HTMLElement?trigger:null;
+    this.editingAddress=item;
+  }
+  closeAddressEditor():void {
+    this.editingAddress=null;
+    const trigger=this.editorTrigger;
+    this.editorTrigger=null;
+    if(trigger?.isConnected)trigger.focus();
+  }
   focusAddress(item:ProjectItem):void {
     if(item.projectId!==this.projectId || !this.hasAddressLocation(item))return;
     window.dispatchEvent(new CustomEvent('fiberapp:planner-address-focus',{
@@ -331,6 +370,8 @@ export class ProjectItemsComponent implements OnInit,OnDestroy {
   }
   ngOnDestroy():void{
     this.cancelSearch();
+    this.editingAddress=null;
+    this.editorTrigger=null;
     this.ui.closeItem();
   }
   onAreaChanged(area:SelectedArea|null):void {
@@ -372,7 +413,10 @@ export class ProjectItemsComponent implements OnInit,OnDestroy {
     this.modalError='';
   }
   @HostListener('document:keydown.escape')
-  onEscape():void{if(this.ui.itemModal())this.close();}
+  onEscape():void{
+    if(this.editingAddress)this.closeAddressEditor();
+    else if(this.ui.itemModal())this.close();
+  }
   create():void{
     const kind=this.ui.itemModal();
     if(!kind || !this.projectId || !this.canSave)return;

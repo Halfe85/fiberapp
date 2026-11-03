@@ -29,6 +29,8 @@
   const errorBox = document.getElementById('project-item-error');
   const itemsContainer = document.getElementById('project-items');
   const addressEmpty = document.getElementById('project-addresses-empty');
+  const editDialog = document.getElementById('project-address-edit-dialog');
+  const editClose = document.getElementById('project-address-edit-close');
   const sections = {
     address: {
       section: document.getElementById('project-addresses-section'),
@@ -51,6 +53,16 @@
   let searchTimer = null;
   let searchController = null;
   let canSave = true;
+  let editReturnFocus = null;
+  function openAddressEditor(item,trigger){
+    // Editing is a UI placeholder. No item is modified until an editor is built.
+    if(!editDialog || !editClose || !selectedProject() ||
+       item.projectId !== selectedProject() || item.kind !== 'address')return;
+    editDialog.dataset.addressId = item.id;
+    editReturnFocus = trigger;
+    editDialog.showModal();
+    editClose.focus();
+  }
   const showPosition = () => {
     positionStatus.textContent = selectedPosition
       ? 'Posisjon valgt: ' + selectedPosition.latitude.toFixed(6) + ', ' +
@@ -213,6 +225,11 @@
     currentProjectId = selectedProject();
     closeMenu();
     if (!currentProjectId && dialog.open) dialog.close();
+    if (editDialog?.open && (!currentProjectId ||
+        !rows.some(item=>item.id===editDialog.dataset.addressId &&
+          item.kind==='address' && item.projectId===currentProjectId))){
+      editDialog.close();
+    }
     for (const kind of ['address', 'equipment']) {
       const target = sections[kind];
       target.list.replaceChildren();
@@ -221,7 +238,7 @@
       if (kind === 'address') addressEmpty.hidden = found.length > 0;
       for (const item of found) {
         const article = document.createElement('article');
-        article.className = 'project-item';
+        article.className = kind === 'address' ? 'project-item project-item-address' : 'project-item';
         const mappedAddress = kind === 'address' &&
           Number.isFinite(item.latitude) && Number.isFinite(item.longitude) &&
           Math.abs(item.latitude) <= 90 && Math.abs(item.longitude) <= 180;
@@ -266,6 +283,19 @@
           content.append(detail);
         }
         article.append(content);
+        if (kind === 'address') {
+          const tool = document.createElement('button');
+          tool.type = 'button';
+          tool.className = 'project-item-tool';
+          tool.setAttribute('aria-label','Rediger adresse: '+item.name);
+          tool.title = 'Rediger adresse';
+          // Static, trusted markup; the address name is only used as text elsewhere.
+          tool.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" '+ 
+            'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+
+            '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-7.8 7.8a2.12 2.12 0 0 1-3-3l7.8-7.8a6 6 0 0 1 7.9-7.9z"/></svg>';
+          tool.addEventListener('click',()=>openAddressEditor(item,tool));
+          article.append(tool);
+        }
         target.list.append(article);
       }
     }
@@ -319,6 +349,17 @@
     menu.hidden = !menu.hidden;
     toggle.setAttribute('aria-expanded', String(!menu.hidden));
   });
+  if(editDialog && editClose){
+    editClose.addEventListener('click',()=>editDialog.close());
+    editDialog.addEventListener('click',event=>{
+      if(event.target===editDialog)editDialog.close();
+    });
+    editDialog.addEventListener('close',()=>{
+      delete editDialog.dataset.addressId;
+      if(editReturnFocus?.isConnected)editReturnFocus.focus();
+      editReturnFocus=null;
+    });
+  }
   document.getElementById('add-address').addEventListener('click', () => openModal('address'));
   document.getElementById('add-equipment').addEventListener('click', () => openModal('equipment'));
   addressQuery.addEventListener('input', onAddressInput);

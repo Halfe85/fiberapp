@@ -425,3 +425,37 @@
   .project-workspace-grid > .project-items > #project-equipment-section{grid-column:1;grid-row:3}
   .project-workspace-grid > .project-map-column{grid-column:1;grid-row:4}
 }
+
+/* Address row tool: independent of click-to-center, fades in on hover. */
+.project-item-address{position:relative}
+.project-item-address > .project-item-focus,
+.project-item-address > div{padding-right:60px}
+.project-item-address > .project-item-tool{
+  position:absolute;
+  top:50%;right:7px;transform:translateY(-50%);
+  display:grid;place-items:center;
+  width:42px;height:42px;padding:10px;
+  border:0;border-radius:9px;
+  background:#eaf1f8;color:#365570;
+  cursor:pointer;z-index:1;
+  opacity:0;pointer-events:none;
+  transition:opacity .18s ease,background-color .18s ease;
+}
+.project-item-address > .project-item-tool svg{width:20px;height:20px}
+.project-item-address:hover > .project-item-tool,
+.project-item-address:focus-within > .project-item-tool{
+  opacity:1;pointer-events:auto;
+}
+.project-item-address > .project-item-tool:hover{background:#d7e8f5;color:#155f9b}
+.project-item-address > .project-item-tool:focus-visible{
+  opacity:1;pointer-events:auto;outline:2px solid #247db7;outline-offset:2px;
+}
+@media(hover:none),(pointer:coarse){
+  .project-item-address > .project-item-tool{opacity:1;pointer-events:auto}
+}
+@media(prefers-reduced-motion:reduce){
+  .project-item-address > .project-item-tool{transition:none}
+}
+/* No fields yet: only the address editor heading and close control. */
+.project-address-edit-dialog{width:min(94vw,480px);min-height:170px}
+.project-address-edit-dialog .dialog-head{margin-bottom:0}
