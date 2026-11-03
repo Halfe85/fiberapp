@@ -47,8 +47,7 @@ export class ProjectMapComponent implements AfterViewInit,OnChanges,OnDestroy {
 
   ngOnChanges(changes:SimpleChanges):void {
     if(this.map && (changes['postcode'] || changes['projectId'])){
-      this.refreshPins(true);
-      void this.focusPostcode();
+      this.scheduleViewport();
     }
   }
 
@@ -87,9 +86,8 @@ export class ProjectMapComponent implements AfterViewInit,OnChanges,OnDestroy {
         detail:{projectId:this.projectId,latitude:event.latlng.lat,longitude:event.latlng.lng}
       }));
     });
-    this.refreshPins(true);
-    void this.focusPostcode();
-    requestAnimationFrame(()=>this.map?.invalidateSize());
+    this.map.setView([64,11],5);
+    this.scheduleViewport();
   }
 
   private async lookupPostcode(postcode:string):Promise<number[][]|null> {
@@ -134,8 +132,23 @@ export class ProjectMapComponent implements AfterViewInit,OnChanges,OnDestroy {
     this.postcodeCache.set(postcode,bounds);
     return bounds;
   }
-  private async focusPostcode():Promise<void> {
+  private scheduleViewport():void {
+    if(!this.map || this.destroyed)return;
     const request=++this.postcodeRequest;
+    // Defer until the project workspace is laid out; fitBounds needs a real size.
+    requestAnimationFrame(()=>{
+      if(this.destroyed || !this.map || request!==this.postcodeRequest)return;
+      this.map.invalidateSize({pan:false});
+      this.refreshPins(false);
+      if(/^[0-9]{4}$/.test(this.postcode)){
+        void this.focusPostcode(request);
+      }else{
+        this.refreshPins(true);
+      }
+    });
+  }
+
+  private async focusPostcode(request:number):Promise<void> {
     const postcode=this.postcode;
     const id=this.projectId;
     if(!this.map || !/^[0-9]{4}$/.test(postcode))return;
@@ -145,6 +158,7 @@ export class ProjectMapComponent implements AfterViewInit,OnChanges,OnDestroy {
       if(this.destroyed || request!==this.postcodeRequest ||
          id!==this.projectId || postcode!==this.postcode || !this.map || this.picking)return;
       if(!bounds){
+        this.refreshPins(true);
         this.message.nativeElement.textContent='Ingen kartfestede vegadresser funnet for postnummer '+
           postcode+'. Du kan navigere manuelt i kartet.';
         return;
@@ -155,6 +169,7 @@ export class ProjectMapComponent implements AfterViewInit,OnChanges,OnDestroy {
         postcode+'. Dette er ikke en fastsatt prosjektgrense.';
     }catch{
       if(this.destroyed || request!==this.postcodeRequest || id!==this.projectId)return;
+      this.refreshPins(true);
       this.message.nativeElement.textContent='Kunne ikke slå opp postnummer '+postcode+
         ' hos Kartverket. Kartet kan brukes manuelt.';
     }

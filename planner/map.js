@@ -19,11 +19,8 @@
   const defaultMessage='Naviger i kartet. Plasser adresser eller utstyr via + i headeren.';
   let map=null;
   let pins=null;
-  let currentProjectId=null;
   let choosing=false;
-  let lastBounds=null;
   let ready=false;
-  let lastSelectionKey=null;
   let postcodeRequest=0;
   const postcodeCache=new Map();
 
@@ -92,6 +89,7 @@
       if(request!==postcodeRequest || id!==getProjectId() ||
          postcode!==getPostcode(id) || !map || choosing)return;
       if(!bounds){
+        updatePins(true);
         message.textContent='Ingen kartfestede vegadresser funnet for postnummer '+postcode+
           '. Du kan navigere manuelt i kartet.';
         return;
@@ -102,6 +100,7 @@
         '. Dette er ikke en fastsatt prosjektgrense.';
     }catch{
       if(request!==postcodeRequest || id!==getProjectId())return;
+      updatePins(true);
       message.textContent='Kunne ikke slå opp postnummer '+postcode+
         ' hos Kartverket. Kartet kan brukes manuelt.';
     }
@@ -116,7 +115,7 @@
     wrap.append(category);
     return wrap;
   }
-  function updatePins(){
+  function updatePins(fit=false){
     if(!map || !pins)return;
     pins.clearLayers();
     const id=getProjectId();
@@ -132,8 +131,9 @@
       marker.addTo(pins);
       bounds.push([item.latitude,item.longitude]);
     }
-    if(lastBounds!==id){
-      lastBounds=id;
+    // Only use marker bounds when there is no valid postcode (or lookup fails).
+    // Otherwise this would overwrite the postcode zoom on project re-entry.
+    if(fit){
       if(bounds.length===1)map.setView(bounds[0],14);
       else if(bounds.length>1)map.fitBounds(bounds,{padding:[40,40],maxZoom:15});
       else map.setView([64,11],5);
@@ -141,10 +141,7 @@
   }
   function ensureMap(){
     if(!getProjectId())return;
-    if(map){
-      requestAnimationFrame(()=>{map.invalidateSize();updatePins();});
-      return;
-    }
+    if(map)return; // The caller will handle resize, pins and zoom in that order.
     if(!window.L){
       message.textContent='Kartbiblioteket kunne ikke lastes. Kontroller internettforbindelsen.';
       return;
@@ -155,6 +152,7 @@
       minZoom:3,maxZoom:19,maxNativeZoom:18
     }).addTo(map);
     pins=window.L.layerGroup().addTo(map);
+    map.setView([64,11],5); // Leaflet needs an initial view before its tiles load.
     map.on('click',e=>{
       if(!choosing || !getProjectId())return;
       choosing=false;
@@ -168,26 +166,29 @@
       if(!choosing)message.textContent='Noen kartfliser kunne ikke lastes fra Kartverket.';
     });
     ready=true;
-    updatePins();
-    requestAnimationFrame(()=>map.invalidateSize());
+    updatePins(false);
   }
   function updateProject(){
     choosing=false;
     element.classList.remove('picking-position');
     message.textContent=defaultMessage;
-    currentProjectId=getProjectId();
-    const postcode=getPostcode(currentProjectId);
-    const selectionKey=(currentProjectId||'')+'|'+postcode;
-    const changed=selectionKey!==lastSelectionKey;
-    if(changed){
-      lastSelectionKey=selectionKey;
-      lastBounds=null;
-    }
+    const projectId=getProjectId();
+    const postcode=getPostcode(projectId);
+    // Incrementing invalidates delayed replies from the project we just left.
     const request=++postcodeRequest;
-    if(currentProjectId){
+    if(!projectId)return;
+    // The workspace was just unhidden. Let layout settle before fitting the map.
+    // On a cached postcode lookup, a Promise can settle before this frame;
+    // invalidateSize must therefore run first.
+    requestAnimationFrame(()=>{
+      if(request!==postcodeRequest || projectId!==getProjectId())return;
       ensureMap();
-      if(changed && postcode && map)void zoomToPostcode(currentProjectId,postcode,request);
-    }
+      if(!map)return;
+      map.invalidateSize({pan:false});
+      updatePins(false);
+      if(postcode)void zoomToPostcode(projectId,postcode,request);
+      else updatePins(true);
+    });
   }
   window.addEventListener('fiberapp:planner-map-select-start',event=>{
     if(!map || !ready || !getProjectId() || event.detail?.projectId!==getProjectId()){
