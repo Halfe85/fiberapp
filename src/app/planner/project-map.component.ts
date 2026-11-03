@@ -1,5 +1,5 @@
 import {CommonModule} from '@angular/common';
-import {AfterViewInit,Component,ElementRef,HostListener,Input,OnDestroy,ViewChild} from '@angular/core';
+import {AfterViewInit,Component,ElementRef,HostListener,Input,OnChanges,OnDestroy,SimpleChanges,ViewChild} from '@angular/core';
 
 interface ProjectMapItem {
   id:string;
@@ -10,6 +10,8 @@ interface ProjectMapItem {
   longitude?:number;
 }
 const ITEM_KEY='fiberapp.planner.items.v1';
+const POSTCODE_API='https://api.kartverket.no/adresser/v1/sok';
+const POSTCODE_PAGE_SIZE=50;
 const KARTVERKET_WMTS='https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png';
 
 @Component({
@@ -29,16 +31,26 @@ const KARTVERKET_WMTS='https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/we
     </section>
   `
 })
-export class ProjectMapComponent implements AfterViewInit,OnDestroy {
+export class ProjectMapComponent implements AfterViewInit,OnChanges,OnDestroy {
   @Input({required:true}) projectId!:string;
+  @Input() postcode='';
   @ViewChild('mapHost') mapHost!:ElementRef<HTMLElement>;
   @ViewChild('message') message!:ElementRef<HTMLElement>;
   private map:any=null;
   private pins:any=null;
   private picking=false;
   private destroyed=false;
+  private postcodeRequest=0;
+  private readonly postcodeCache=new Map<string,number[][]>();
   private readonly instruction='Naviger i kartet. Plasser adresser eller utstyr via + i headeren.';
   private onScriptLoad=()=>this.createMap();
+
+  ngOnChanges(changes:SimpleChanges):void {
+    if(this.map && (changes['postcode'] || changes['projectId'])){
+      this.refreshPins(true);
+      void this.focusPostcode();
+    }
+  }
 
   ngAfterViewInit():void {
     if(typeof window==='undefined')return;
@@ -76,9 +88,77 @@ export class ProjectMapComponent implements AfterViewInit,OnDestroy {
       }));
     });
     this.refreshPins(true);
+    void this.focusPostcode();
     requestAnimationFrame(()=>this.map?.invalidateSize());
   }
 
+  private async lookupPostcode(postcode:string):Promise<number[][]|null> {
+    if(this.postcodeCache.has(postcode))return this.postcodeCache.get(postcode)!;
+    async function page(side:number):Promise<any> {
+      const params=new URLSearchParams({
+        postnummer:postcode,
+        treffPerSide:String(POSTCODE_PAGE_SIZE),
+        side:String(side),
+        utkoordsys:'4258'
+      });
+      const response=await fetch(POSTCODE_API+'?'+params.toString(),{
+        headers:{Accept:'application/json'}
+      });
+      if(!response.ok)throw new Error('Adresse-API feilet: '+response.status);
+      return response.json();
+    }
+    const first=await page(0);
+    if(!Array.isArray(first?.adresser) || first.adresser.length===0)return null;
+    const total=Number(first?.metadata?.totaltAntallTreff)||0;
+    const lastPage=Math.max(0,Math.ceil(Math.min(total,10000)/POSTCODE_PAGE_SIZE)-1);
+    const pages=[...new Set([
+      Math.floor(lastPage/4),Math.floor(lastPage/2),
+      Math.floor(lastPage*3/4),lastPage
+    ])].filter(n=>n>0);
+    const results=await Promise.allSettled(pages.map(page));
+    const addresses:any[]=[...first.adresser];
+    for(const result of results){
+      if(result.status==='fulfilled' && Array.isArray(result.value?.adresser)){
+        addresses.push(...result.value.adresser);
+      }
+    }
+    const coords:number[][]=addresses
+      .map(item=>item?.representasjonspunkt)
+      .filter(point=>point && Number.isFinite(point.lat) && Number.isFinite(point.lon) &&
+        Math.abs(point.lat)<=90 && Math.abs(point.lon)<=180)
+      .map(point=>[point.lat,point.lon]);
+    if(!coords.length)return null;
+    const south=Math.min(...coords.map(p=>p[0])),north=Math.max(...coords.map(p=>p[0]));
+    const west=Math.min(...coords.map(p=>p[1])),east=Math.max(...coords.map(p=>p[1]));
+    const bounds=[[south,west],[north,east]];
+    this.postcodeCache.set(postcode,bounds);
+    return bounds;
+  }
+  private async focusPostcode():Promise<void> {
+    const request=++this.postcodeRequest;
+    const postcode=this.postcode;
+    const id=this.projectId;
+    if(!this.map || !/^[0-9]{4}$/.test(postcode))return;
+    this.message.nativeElement.textContent='Finner kartutsnitt for postnummer '+postcode+' …';
+    try{
+      const bounds=await this.lookupPostcode(postcode);
+      if(this.destroyed || request!==this.postcodeRequest ||
+         id!==this.projectId || postcode!==this.postcode || !this.map || this.picking)return;
+      if(!bounds){
+        this.message.nativeElement.textContent='Ingen kartfestede vegadresser funnet for postnummer '+
+          postcode+'. Du kan navigere manuelt i kartet.';
+        return;
+      }
+      // Estimert geografisk område fra adresser, ikke den offisielle postnummergrensen.
+      this.map.fitBounds(bounds,{padding:[40,40],maxZoom:14});
+      this.message.nativeElement.textContent='Kartet viser et omtrentlig utsnitt for postnummer '+
+        postcode+'. Dette er ikke en fastsatt prosjektgrense.';
+    }catch{
+      if(this.destroyed || request!==this.postcodeRequest || id!==this.projectId)return;
+      this.message.nativeElement.textContent='Kunne ikke slå opp postnummer '+postcode+
+        ' hos Kartverket. Kartet kan brukes manuelt.';
+    }
+  }
   private refreshPins(fit:boolean):void {
     if(!this.map || !this.pins)return;
     this.pins.clearLayers();
@@ -127,6 +207,8 @@ export class ProjectMapComponent implements AfterViewInit,OnDestroy {
       return;
     }
     this.picking=true;
+    // A delayed address lookup must not override the user picking an exact location.
+    this.postcodeRequest++;
     this.mapHost.nativeElement.classList.add('picking-position');
     this.message.nativeElement.textContent='Klikk eller trykk i kartet der punktet skal plasseres.';
     this.mapHost.nativeElement.scrollIntoView({behavior:'smooth',block:'nearest'});
@@ -137,6 +219,7 @@ export class ProjectMapComponent implements AfterViewInit,OnDestroy {
 
   ngOnDestroy():void {
     this.destroyed=true;
+    this.postcodeRequest++;
     if(typeof document!=='undefined'){
       const script=document.querySelector('script[src*="leaflet@1.9.4/dist/leaflet.js"]');
       script?.removeEventListener('load',this.onScriptLoad);

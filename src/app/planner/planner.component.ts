@@ -11,6 +11,7 @@ interface Project {
   id:string;
   name:string;
   description:string;
+  postcode?:string;
   createdAt:string;
   updatedAt:string;
 }
@@ -74,7 +75,7 @@ const STORAGE_KEY='fiberapp.planner.projects.v1';
       <h2 id="ng-workspace-title">{{current.name}}</h2>
       <p class="workspace-description" *ngIf="current.description">{{current.description}}</p>
     </div>
-    <app-project-map [projectId]="current.id"></app-project-map>
+    <app-project-map [projectId]="current.id" [postcode]="current.postcode || ''"></app-project-map>
     <app-project-items [projectId]="current.id"></app-project-items>
   </section>
   <div class="planner-modal-backdrop" *ngIf="ui.createOpen()" (click)="close()">
@@ -88,6 +89,10 @@ const STORAGE_KEY='fiberapp.planner.projects.v1';
         <label for="ng-project-name">Prosjektnavn *</label>
         <input id="ng-project-name" name="name" type="text" required maxlength="80"
                [(ngModel)]="name" autocomplete="off" autofocus placeholder="F.eks. Solsiden borettslag">
+        <label for="ng-project-postcode">Postnummer *</label>
+        <input id="ng-project-postcode" name="postcode" type="text" inputmode="numeric" 
+               pattern="[0-9]{4}" minlength="4" maxlength="4" autocomplete="postal-code"
+               [required]="!editingId" [(ngModel)]="postcode" placeholder="F.eks. 1850">
         <label for="ng-project-description">Beskrivelse (valgfritt)</label>
         <textarea id="ng-project-description" name="description" [(ngModel)]="description"
                   maxlength="300" rows="3" placeholder="Kort beskrivelse av prosjektet"></textarea>
@@ -122,6 +127,7 @@ export class PlannerComponent implements OnInit,OnDestroy {
   formError='';
   name='';
   description='';
+  postcode='';
   storageAvailable=true;
   openProjectId:string|null=null;
   activeProjectId:string|null=null;
@@ -209,6 +215,7 @@ export class PlannerComponent implements OnInit,OnDestroy {
     this.editingId=item.id;
     this.name=item.name;
     this.description=item.description||'';
+    this.postcode=item.postcode||'';
     this.formError='';
     this.ui.openCreate();
   }
@@ -251,6 +258,7 @@ export class PlannerComponent implements OnInit,OnDestroy {
     this.deleteError='';
     this.name='';
     this.description='';
+    this.postcode='';
     this.formError='';
   }
   @HostListener('document:keydown.escape')
@@ -266,6 +274,12 @@ export class PlannerComponent implements OnInit,OnDestroy {
     if(!this.storageAvailable)return;
     const name=this.name.trim().replace(/\s+/g,' ');
     const description=this.description.trim();
+    const postcode=this.postcode.trim();
+    if((!this.editingId && !/^[0-9]{4}$/.test(postcode)) ||
+       (postcode && !/^[0-9]{4}$/.test(postcode))){
+      this.formError='Postnummer må bestå av nøyaktig fire siffer.';
+      return;
+    }
     if(!name || name.length>80 || description.length>300){
       this.formError='Prosjektnavn må ha 1–80 tegn; beskrivelse maks 300.';
       return;
@@ -279,8 +293,8 @@ export class PlannerComponent implements OnInit,OnDestroy {
     const id=typeof crypto.randomUUID==='function'?crypto.randomUUID()
       :'project-'+Date.now()+'-'+Math.random().toString(36).slice(2);
     const next:Project[]=this.editingId
-      ? this.projects.map(p=>p.id===this.editingId?{...p,name,description,updatedAt:now}:p)
-      : [{id,name,description,createdAt:now,updatedAt:now},...this.projects];
+      ? this.projects.map(p=>p.id===this.editingId?{...p,name,description,postcode,updatedAt:now}:p)
+      : [{id,name,description,postcode,createdAt:now,updatedAt:now},...this.projects];
     try{
       localStorage.setItem(STORAGE_KEY,JSON.stringify(next));
       this.projects=next;
