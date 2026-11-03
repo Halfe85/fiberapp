@@ -13,6 +13,8 @@
   const note = document.getElementById('project-item-note');
   const typeFields = document.getElementById('project-equipment-type-fields');
   const equipmentType = document.getElementById('project-equipment-type');
+  const pickLocation = document.getElementById('project-item-pick-location');
+  const positionStatus = document.getElementById('project-item-position');
   const errorBox = document.getElementById('project-item-error');
   const itemsContainer = document.getElementById('project-items');
   const sections = {
@@ -29,7 +31,14 @@
   let rows = [];
   let currentProjectId = null;
   let currentKind = null;
+  let selectedPosition = null;
   let canSave = true;
+  const showPosition = () => {
+    positionStatus.textContent = selectedPosition
+      ? 'Posisjon valgt: ' + selectedPosition.latitude.toFixed(6) + ', ' +
+        selectedPosition.longitude.toFixed(6)
+      : 'Ingen kartposisjon valgt';
+  };
 
   function error(message) {
     errorBox.textContent = message;
@@ -81,6 +90,12 @@
           type.textContent = item.equipmentType;
           article.append(type);
         }
+        if (Number.isFinite(item.latitude) && Number.isFinite(item.longitude)) {
+          const location = document.createElement('span');
+          location.className = 'project-item-position';
+          location.textContent = 'Kartposisjon registrert';
+          article.append(location);
+        }
         if (item.note) {
           const detail = document.createElement('p');
           detail.textContent = item.note;
@@ -98,6 +113,8 @@
     if (!projectId || !canSave) return;
     currentProjectId = projectId;
     currentKind = kind;
+    selectedPosition = null;
+    showPosition();
     form.reset();
     error('');
     modalTitle.textContent = kind === 'address' ? 'Ny adresse' : 'Nytt utstyr';
@@ -119,6 +136,23 @@
   });
   document.getElementById('add-address').addEventListener('click', () => openModal('address'));
   document.getElementById('add-equipment').addEventListener('click', () => openModal('equipment'));
+  pickLocation.addEventListener('click', () => {
+    const projectId = selectedProject();
+    if (!projectId || !currentKind) return;
+    dialog.close();
+    window.dispatchEvent(new CustomEvent('fiberapp:planner-map-select-start', {
+      detail: {projectId,kind:currentKind}
+    }));
+  });
+  window.addEventListener('fiberapp:planner-map-picked', event => {
+    const {projectId,latitude,longitude} = event.detail || {};
+    if (!currentKind || projectId !== selectedProject() ||
+        !Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
+    selectedPosition = {latitude,longitude};
+    showPosition();
+    dialog.showModal();
+    name.focus();
+  });
   document.addEventListener('pointerdown', event => {
     if (!wrapper.contains(event.target)) closeMenu();
   });
@@ -149,6 +183,7 @@
       id,projectId,kind:currentKind,name:label,
       note:noteText,
       equipmentType:currentKind === 'equipment' ? equipmentType.value : '',
+      ...(selectedPosition || {}),
       createdAt:new Date().toISOString()
     }];
     try {
@@ -156,6 +191,9 @@
       rows = next;
       dialog.close();
       render();
+      window.dispatchEvent(new CustomEvent('fiberapp:planner-items-changed', {
+        detail: {projectId}
+      }));
     } catch {
       error('Kunne ikke lagre. Kontroller nettleserlagringen.');
     }
