@@ -136,7 +136,7 @@
   form.addEventListener('submit', event => {
     event.preventDefault();
     const projectId = selectedProject();
-    const label = name.value.trim().replace(/\\s+/g, ' ');
+    const label = name.value.trim().replace(/\s+/g, ' ');
     const noteText = note.value.trim();
     if (!canSave || !currentKind || !projectId || projectId !== currentProjectId) return;
     if (!label || label.length > 120 || noteText.length > 300) {

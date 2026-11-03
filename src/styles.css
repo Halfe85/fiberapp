@@ -444,3 +444,55 @@ app-planner .workspace-description{font-size:15px;color:#647b91;margin:9px 0 0}
   }
 }
 
+
+/* Project-scoped + dropdown at far right in the fixed Angular header. */
+.topbar.planner-header .planner-project-actions{
+ grid-column:3;grid-row:1;justify-self:end;position:relative;z-index:50;
+}
+.topbar.planner-header .project-create-menu{
+ position:absolute;right:0;top:calc(100% + 6px);z-index:60;
+ width:194px;padding:7px;background:#fff;border:1px solid #d8e4ef;
+ border-radius:12px;box-shadow:0 14px 32px rgba(20,48,78,.18);
+}
+.topbar.planner-header .project-create-menu button{
+ display:flex;align-items:center;width:100%;min-height:44px;
+ padding:10px 13px;border:0;border-radius:8px;
+ background:transparent;color:#213e58;font:inherit;font-size:15px;font-weight:700;
+ cursor:pointer;text-align:left;
+}
+.topbar.planner-header .project-create-menu button:hover,
+.topbar.planner-header .project-create-menu button:focus-visible{background:#eaf3fc;color:#12629b}
+app-project-items{display:block;min-width:0}
+app-project-items .planner-item-modal form{display:grid;gap:9px}
+app-project-items .planner-item-modal input,
+app-project-items .planner-item-modal textarea,
+app-project-items .planner-item-modal select{
+ min-width:0;width:100%;font:inherit;font-size:16px;
+ border:1px solid #bbccdc;padding:12px 14px;border-radius:10px;
+ background:#fff;color:#1b344d;
+}
+app-project-items .planner-item-groups{display:grid;gap:16px;margin-top:24px}
+app-project-items .planner-item-section{background:#fff;padding:18px;border-radius:14px;border:1px solid #d9e5f0}
+app-project-items .planner-item-section h3{margin:0 0 14px;font-size:18px}
+app-project-items .planner-item-list{display:grid;gap:9px}
+app-project-items .planner-item-row{padding:12px 14px;border-radius:10px;border:1px solid #e2ebf2;overflow-wrap:anywhere}
+app-project-items .planner-item-row strong{font-size:15px;display:block;color:#1d3953}
+app-project-items .planner-item-type{display:inline-block;margin-top:4px;color:#246da1;font-size:12px}
+app-project-items .planner-item-row p{font-size:13px;color:#61778a;margin:6px 0 0}
+@media(max-width:699px){
+ .topbar.planner-header.project-open .topinner{
+   grid-template-columns:minmax(126px,auto) minmax(0,1fr) 44px;
+ }
+ .topbar.planner-header.project-open .header-page-title{
+   grid-column:2;margin:0 3px 0 4px;min-width:0;
+   font-size:clamp(15px,4.3vw,20px);
+ }
+ .topbar.planner-header .planner-project-actions{grid-column:3;grid-row:1;justify-self:end}
+ app-project-items .planner-item-section{padding:14px}
+}
+@media(max-width:370px){
+ .topbar.planner-header.project-open .topinner{
+   grid-template-columns:minmax(124px,auto) minmax(0,1fr) 40px;
+ }
+ .topbar.planner-header.project-open .header-page-title{font-size:15px}
+}

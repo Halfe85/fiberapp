@@ -4,6 +4,7 @@ import {ActivatedRoute,Router} from '@angular/router';
 import {Subscription} from 'rxjs';
 import {FormsModule} from '@angular/forms';
 import {PlannerUiService} from './planner-ui.service';
+import {ProjectItemsComponent} from './project-items.component';
 
 interface Project {
   id:string;
@@ -17,7 +18,7 @@ const STORAGE_KEY='fiberapp.planner.projects.v1';
 @Component({
   selector:'app-planner',
   standalone:true,
-  imports:[CommonModule,FormsModule],
+  imports:[CommonModule,FormsModule,ProjectItemsComponent],
   template:`
   <section class="page planner-projects" *ngIf="!activeProject" aria-labelledby="planner-projects-title">
     <div class="projects-heading">
@@ -72,6 +73,7 @@ const STORAGE_KEY='fiberapp.planner.projects.v1';
       <h2 id="ng-workspace-title">{{current.name}}</h2>
       <p class="workspace-description" *ngIf="current.description">{{current.description}}</p>
     </div>
+    <app-project-items [projectId]="current.id"></app-project-items>
   </section>
   <div class="planner-modal-backdrop" *ngIf="ui.createOpen()" (click)="close()">
     <section class="planner-modal" role="dialog" aria-modal="true"

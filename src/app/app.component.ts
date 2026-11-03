@@ -21,6 +21,19 @@ import {PlannerUiService} from './planner/planner-ui.service';
     </nav>@if (router.url.startsWith('/planner') && !plannerUi.projectOpen()) {
       <button type="button" class="planner-add header-icon" aria-label="Nytt prosjekt"
               title="Nytt prosjekt" (click)="plannerUi.openCreate()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+    }@if (router.url.startsWith('/planner') && plannerUi.projectOpen()) {
+      <div class="planner-project-actions" #projectActions>
+        <button type="button" class="planner-add header-icon"
+                title="Legg til i prosjekt" aria-label="Legg til i prosjekt"
+                aria-controls="ng-project-add-menu" [attr.aria-expanded]="projectMenuOpen"
+                (click)="toggleProjectMenu()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+        @if (projectMenuOpen) {
+          <div class="project-create-menu" id="ng-project-add-menu" aria-label="Legg til i prosjekt">
+            <button type="button" (click)="chooseProjectAction('address')">+ Adresse</button>
+            <button type="button" (click)="chooseProjectAction('equipment')">+ Utstyr</button>
+          </div>
+        }
+      </div>
     }</div></header>
   <main><router-outlet/></main>
   @if (router.url === '/') {
@@ -33,15 +46,31 @@ import {PlannerUiService} from './planner/planner-ui.service';
 })
 export class AppComponent {
  menuOpen=false;
+ projectMenuOpen=false;
  @ViewChild('navigation') navigation?:ElementRef<HTMLElement>;
+ @ViewChild('projectActions') projectActions?:ElementRef<HTMLElement>;
  constructor(public readonly router:Router, public readonly plannerUi:PlannerUiService){}
  toggleMenu():void {this.menuOpen=!this.menuOpen;}
  closeMenu():void {this.menuOpen=false;}
- backToPlannerProjects():void {void this.router.navigate(['/planner']);}
+ toggleProjectMenu():void{
+   this.menuOpen=false;
+   this.projectMenuOpen=!this.projectMenuOpen;
+ }
+ chooseProjectAction(kind:'address'|'equipment'):void{
+   this.projectMenuOpen=false;
+   this.plannerUi.openItem(kind);
+ }
+ backToPlannerProjects():void{
+   this.projectMenuOpen=false;
+   this.plannerUi.closeItem();
+   void this.router.navigate(['/planner']);
+ }
  @HostListener('document:keydown.escape')
- onEscape():void {this.closeMenu();}
+ onEscape():void {this.closeMenu();this.projectMenuOpen=false;}
  @HostListener('document:pointerdown',['$event'])
  onOutsideClick(event:PointerEvent):void {
    if(this.menuOpen && this.navigation && !this.navigation.nativeElement.contains(event.target as Node)) this.closeMenu();
+   if(this.projectMenuOpen && (!this.projectActions ||
+      !this.projectActions.nativeElement.contains(event.target as Node))) this.projectMenuOpen=false;
  }
 }
