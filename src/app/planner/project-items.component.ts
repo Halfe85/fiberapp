@@ -59,7 +59,10 @@ const ADDRESS_API='https://api.kartverket.no/adresser/v1/sok';
       <section class="planner-item-section planner-address-section" aria-label="Adresser">
         <h3>Adresser</h3>
         <div class="planner-item-list">
-          <article class="planner-item-row planner-address-row" *ngFor="let item of addressItems; trackBy:trackId">
+          <article class="planner-item-row planner-address-row" *ngFor="let item of addressItems; trackBy:trackId"
+                   [class.address-tool-modal-open]="editingAddress?.id===item.id"
+                   [class.address-tool-dismissed]="dismissedAddressTools.has(item.id)"
+                   (pointerleave)="onAddressRowPointerLeave(item)">
             <button type="button" class="planner-address-focus"
                     [disabled]="!hasAddressLocation(item)"
                     [attr.aria-label]="'Vis '+item.name+' på kartet'"
@@ -189,6 +192,8 @@ export class ProjectItemsComponent implements OnInit,OnDestroy {
   @Input({required:true}) projectId!:string;
   items:ProjectItem[]=[];
   editingAddress:ProjectItem|null=null;
+  readonly dismissedAddressTools=new Set<string>();
+  private editorOpenedByPointer=false;
   private editorTrigger:HTMLElement|null=null;
   @ViewChild('addressEditClose') set addressEditClose(ref:ElementRef<HTMLButtonElement>|undefined){
     if(ref)ref.nativeElement.focus();
@@ -337,13 +342,23 @@ export class ProjectItemsComponent implements OnInit,OnDestroy {
        !this.items.some(entry=>entry.id===item.id && entry.projectId===this.projectId))return;
     const trigger=event.currentTarget;
     this.editorTrigger=trigger instanceof HTMLElement?trigger:null;
+    this.editorOpenedByPointer=event.detail!==0;
+    if(this.editorOpenedByPointer)this.dismissedAddressTools.add(item.id);
     this.editingAddress=item;
+  }
+  onAddressRowPointerLeave(item:ProjectItem):void {
+    // Do not clear this just because the overlay obscured the row on open.
+    if(this.editingAddress?.id!==item.id)this.dismissedAddressTools.delete(item.id);
   }
   closeAddressEditor():void {
     this.editingAddress=null;
     const trigger=this.editorTrigger;
     this.editorTrigger=null;
-    if(trigger?.isConnected)trigger.focus();
+    if(trigger?.isConnected){
+      if(this.editorOpenedByPointer)trigger.blur();
+      else trigger.focus(); // Keyboard users keep their place in the list.
+    }
+    this.editorOpenedByPointer=false;
   }
   focusAddress(item:ProjectItem):void {
     if(item.projectId!==this.projectId || !this.hasAddressLocation(item))return;
@@ -372,6 +387,8 @@ export class ProjectItemsComponent implements OnInit,OnDestroy {
     this.cancelSearch();
     this.editingAddress=null;
     this.editorTrigger=null;
+    this.editorOpenedByPointer=false;
+    this.dismissedAddressTools.clear();
     this.ui.closeItem();
   }
   onAreaChanged(area:SelectedArea|null):void {

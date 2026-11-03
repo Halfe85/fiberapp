@@ -54,10 +54,19 @@
   let searchController = null;
   let canSave = true;
   let editReturnFocus = null;
-  function openAddressEditor(item,trigger){
+  let editActiveRow = null;
+  let editOpenedByPointer = false;
+  function openAddressEditor(item,trigger,event){
     // Editing is a UI placeholder. No item is modified until an editor is built.
     if(!editDialog || !editClose || !selectedProject() ||
        item.projectId !== selectedProject() || item.kind !== 'address')return;
+    const row=trigger.parentElement;
+    editOpenedByPointer=event?.detail !== 0;
+    editActiveRow=row;
+    row?.classList.add('address-tool-modal-open');
+    // Pointer-triggered focus must not keep the hover tool stuck on after closing.
+    // Re-enable hover only after the pointer leaves this address row.
+    if(editOpenedByPointer)row?.classList.add('address-tool-dismissed');
     editDialog.dataset.addressId = item.id;
     editReturnFocus = trigger;
     editDialog.showModal();
@@ -293,7 +302,12 @@
           tool.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" '+ 
             'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+
             '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-7.8 7.8a2.12 2.12 0 0 1-3-3l7.8-7.8a6 6 0 0 1 7.9-7.9z"/></svg>';
-          tool.addEventListener('click',()=>openAddressEditor(item,tool));
+          tool.addEventListener('click',event=>openAddressEditor(item,tool,event));
+          article.addEventListener('pointerleave',()=>{
+            // A dialog opening can itself trigger pointerleave. Keep suppression
+            // until the dialog is closed and the pointer genuinely exits the row.
+            if(!editDialog?.open)article.classList.remove('address-tool-dismissed');
+          });
           article.append(tool);
         }
         target.list.append(article);
@@ -356,8 +370,14 @@
     });
     editDialog.addEventListener('close',()=>{
       delete editDialog.dataset.addressId;
-      if(editReturnFocus?.isConnected)editReturnFocus.focus();
+      editActiveRow?.classList.remove('address-tool-modal-open');
+      if(editReturnFocus?.isConnected){
+        if(editOpenedByPointer)editReturnFocus.blur();
+        else editReturnFocus.focus(); // Keep keyboard navigation accessible.
+      }
       editReturnFocus=null;
+      editActiveRow=null;
+      editOpenedByPointer=false;
     });
   }
   document.getElementById('add-address').addEventListener('click', () => openModal('address'));

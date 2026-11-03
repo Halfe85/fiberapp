@@ -793,3 +793,11 @@ app-project-items .planner-address-edit-tool:focus-visible{
 }
 app-project-items .planner-address-edit-modal{min-height:170px}
 app-project-items .planner-address-edit-modal .dialog-head{margin-bottom:0}
+
+/* Edit-modal lifecycle: while open (or just closed by mouse), hide the wrench
+   even when focus-within or :hover would otherwise keep it visible. */
+app-project-items .planner-address-row.address-tool-modal-open .planner-address-edit-tool,
+app-project-items .planner-address-row.address-tool-dismissed .planner-address-edit-tool{
+  opacity:0;
+  pointer-events:none;
+}

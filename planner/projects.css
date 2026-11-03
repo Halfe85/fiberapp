@@ -459,3 +459,11 @@
 /* No fields yet: only the address editor heading and close control. */
 .project-address-edit-dialog{width:min(94vw,480px);min-height:170px}
 .project-address-edit-dialog .dialog-head{margin-bottom:0}
+
+/* Dismiss the wrench on edit; after a pointer click, don't resurrect it due to
+   focus-within or hover until the pointer has actually left the address row. */
+.project-item-address.address-tool-modal-open > .project-item-tool,
+.project-item-address.address-tool-dismissed > .project-item-tool{
+  opacity:0;
+  pointer-events:none;
+}
