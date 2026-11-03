@@ -15,6 +15,7 @@
   const workspaceDescription = document.getElementById('workspace-description');
   const backButton = document.getElementById('project-back');
   const plannerHeader = document.querySelector('.planner-header');
+  const itemActions = document.getElementById('project-actions');
   const warning = document.getElementById('project-error');
   const formError = document.getElementById('project-form-error');
   const title = document.getElementById('project-dialog-title');
@@ -78,7 +79,11 @@
     workspace.hidden = !selected;
     button.hidden = Boolean(selected);
     backButton.hidden = !selected;
+    itemActions.hidden = !selected;
     plannerHeader.classList.toggle('project-open', Boolean(selected));
+    window.dispatchEvent(new CustomEvent('fiberapp:planner-project-changed', {
+      detail: {projectId: selected ? selected.id : null}
+    }));
     document.getElementById('main').setAttribute('aria-label', selected ? selected.name : 'Prosjekter');
     document.title = selected ? selected.name + ' | Fiber Planner' : 'Fiber Planner | Fiberapp';
     if (!selected) return;
