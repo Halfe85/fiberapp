@@ -62,6 +62,7 @@ const ADDRESS_API='https://api.kartverket.no/adresser/v1/sok';
           <article class="planner-item-row planner-address-row" *ngFor="let item of addressItems; trackBy:trackId"
                    [class.address-tool-modal-open]="editingAddress?.id===item.id"
                    [class.address-tool-dismissed]="dismissedAddressTools.has(item.id)"
+                   (pointerenter)="onAddressRowPointerLeave(item)"
                    (pointerleave)="onAddressRowPointerLeave(item)">
             <button type="button" class="planner-address-focus"
                     [disabled]="!hasAddressLocation(item)"

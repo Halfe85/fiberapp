@@ -303,6 +303,11 @@
             'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+
             '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-7.8 7.8a2.12 2.12 0 0 1-3-3l7.8-7.8a6 6 0 0 1 7.9-7.9z"/></svg>';
           tool.addEventListener('click',event=>openAddressEditor(item,tool,event));
+          article.addEventListener('pointerenter',()=>{
+            // If the cursor moved away while the modal was open, the first
+            // real hover after closing must make the wrench available again.
+            if(!editDialog?.open)article.classList.remove('address-tool-dismissed');
+          });
           article.addEventListener('pointerleave',()=>{
             // A dialog opening can itself trigger pointerleave. Keep suppression
             // until the dialog is closed and the pointer genuinely exits the row.
