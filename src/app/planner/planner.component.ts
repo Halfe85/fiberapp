@@ -31,14 +31,6 @@ const STORAGE_KEY='fiberapp.planner.projects.v1';
            (pointerdown)="onProjectPointerDown($event,item.id)"
            (pointerup)="onProjectPointerUp($event,item.id)"
            (pointercancel)="pointerStart=null">
-        <button type="button" class="project-tool" title="Prosjektinnstillinger"
-                [attr.aria-label]="'Innstillinger for '+item.name"
-                (click)="openSettings(item)">
-          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"
-               stroke-linecap="round" stroke-linejoin="round">
-            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-7.8 7.8a2.12 2.12 0 0 1-3-3l7.8-7.8a6 6 0 0 1 7.9-7.9z"/>
-          </svg>
-        </button>
         <article class="panel project-row">
           <div class="project-info">
             <strong>{{item.name}}</strong>
@@ -46,6 +38,17 @@ const STORAGE_KEY='fiberapp.planner.projects.v1';
           </div>
           <time class="project-created" [attr.datetime]="item.createdAt">{{formatDate(item.createdAt)}}</time>
         </article>
+        <div class="project-action-zone">
+          <button type="button" class="project-tool" title="Prosjektinnstillinger"
+                  [attr.aria-label]="'Innstillinger for '+item.name"
+                  (click)="openSettings(item)">
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-7.8 7.8a2.12 2.12 0 0 1-3-3l7.8-7.8a6 6 0 0 1 7.9-7.9z"/>
+            </svg>
+          </button>
+          <span class="project-door" aria-hidden="true"></span>
+        </div>
       </div>
     </div>
     <ng-template #emptyProjects>
@@ -137,7 +140,8 @@ export class PlannerComponent implements OnInit {
     }
   }
   onProjectPointerDown(event:PointerEvent,id:string):void{
-    if(event.button!==0 || (event.target as Element).closest('.project-tool'))return;
+    if(event.pointerType==='mouse' || event.button!==0 ||
+      (event.target as Element).closest('.project-action-zone'))return;
     this.pointerStart={x:event.clientX,y:event.clientY,pointerId:event.pointerId,projectId:id};
   }
   onProjectPointerUp(event:PointerEvent,id:string):void{

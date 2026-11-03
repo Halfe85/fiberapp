@@ -1,4 +1,4 @@
-/* Fiber Planner project list: hover on desktop, swipe on touch, wrench settings. */
+/* Fiber Planner: fixed project tiles with a sliding wrench door on the right. */
 (() => {
   'use strict';
   const KEY = 'fiberapp.planner.projects.v1';
@@ -43,8 +43,7 @@
   function showTools(id) {
     openId = openId === id ? null : id;
     for (const row of list.querySelectorAll('.project-swipe')) {
-      const open = row.dataset.projectId === openId;
-      row.classList.toggle('open', open);
+      row.classList.toggle('open', row.dataset.projectId === openId);
     }
   }
   function resetDeleteView() {
@@ -71,6 +70,8 @@
     wrap.className = 'project-swipe';
     wrap.dataset.projectId = project.id;
 
+    const action = document.createElement('div');
+    action.className = 'project-action-zone';
     const tool = document.createElement('button');
     tool.type = 'button';
     tool.className = 'project-tool';
@@ -78,6 +79,10 @@
     tool.title = 'Prosjektinnstillinger';
     tool.innerHTML = wrenchSvg;
     tool.addEventListener('click', () => startSettings(project));
+    const door = document.createElement('span');
+    door.className = 'project-door';
+    door.setAttribute('aria-hidden', 'true');
+    action.append(tool, door);
 
     const row = document.createElement('article');
     row.className = 'project-row';
@@ -95,11 +100,13 @@
     date.dateTime = project.createdAt;
     date.textContent = new Date(project.createdAt).toLocaleDateString('nb-NO');
     row.append(info, date);
-    wrap.append(tool, row);
+    wrap.append(row, action);
 
     let start = null;
     wrap.addEventListener('pointerdown', event => {
-      if (event.button !== 0 || event.target.closest('.project-tool')) return;
+      // Mouse users only reveal the wrench by hovering its right-hand zone.
+      if (event.pointerType === 'mouse' || event.button !== 0 ||
+          event.target.closest('.project-action-zone')) return;
       start = { x:event.clientX, y:event.clientY, id:event.pointerId };
     });
     wrap.addEventListener('pointerup', event => {

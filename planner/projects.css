@@ -46,28 +46,63 @@
  .dialog-actions button{flex:1}
 }
 
-/* Wrench drawer: auto-reveal on desktop hover or keyboard focus; touch swipe stays. */
-.project-swipe{position:relative;isolation:isolate;overflow:hidden;width:100%;min-width:0;
-  border-radius:14px;background:#dcecf9;touch-action:pan-y}
-.project-swipe .project-tool{position:absolute;right:0;top:0;bottom:0;width:76px;
-  border:0;border-radius:0;background:#216da7;color:#fff;display:grid;place-items:center;
-  cursor:pointer;z-index:0}
-.project-swipe .project-tool svg{width:26px;height:26px}
-.project-swipe .project-tool:hover,.project-swipe .project-tool:focus-visible{background:#155685}
-.project-swipe .project-row{position:relative;z-index:1;width:100%;margin:0;min-height:84px;
-  transition:transform .2s cubic-bezier(.2,.75,.2,1);gap:12px}
-.project-swipe.open .project-row{transform:translateX(-76px)}
-/* Focus and hover do not need a separate arrow button. */
-.project-swipe:focus-within .project-row{transform:translateX(-76px)}
-@media(hover:hover) and (pointer:fine){
- .project-swipe:hover .project-row{transform:translateX(-76px)}
+/* Only the 76px-wide right-hand door moves, never the project tile.
+   Hover is scoped to this right zone, touch gestures open the same door. */
+.project-swipe{
+  position:relative;isolation:isolate;overflow:hidden;width:100%;min-width:0;
+  border-radius:14px;background:#fff;touch-action:pan-y;
+}
+.project-swipe .project-row{
+  position:relative;z-index:1;width:100%;margin:0;min-height:84px;
+  padding-right:calc(20px + 76px);gap:12px;
+  transform:none!important;transition:none;
 }
 .project-swipe .project-row .content{min-width:0}
-@media(max-width:699px){
- .project-swipe .project-row{flex-direction:row;align-items:center}
- .project-swipe .project-row time{white-space:normal}
+.project-action-zone{
+  position:absolute;z-index:2;top:0;right:0;bottom:0;width:76px;
+  overflow:hidden;border-left:1px solid #d9e5f0;
 }
-@media(prefers-reduced-motion:reduce){.project-swipe .project-row{transition:none}}
+.project-action-zone .project-tool{
+  position:absolute;inset:0;width:100%;height:100%;
+  display:grid;place-items:center;border:0;border-radius:0;
+  background:#216da7;color:#fff;cursor:pointer;
+  padding:0;pointer-events:none;
+}
+.project-action-zone .project-tool svg{width:26px;height:26px}
+.project-action-zone .project-tool:hover,
+.project-action-zone .project-tool:focus-visible{background:#155685}
+.project-action-zone .project-door{
+  position:absolute;z-index:1;inset:0;pointer-events:none;
+  display:grid;place-items:center;
+  background:#f8fbfe;border-left:1px solid #e7eef5;
+  transform:translateX(0);
+  transition:transform .22s cubic-bezier(.2,.75,.2,1);
+}
+.project-action-zone .project-door::after{
+  content:"";width:4px;height:23px;border-radius:4px;
+  background:#acc2d5;box-shadow:7px 0 0 #acc2d5,-7px 0 0 #acc2d5;
+}
+/* This hover selector cannot be triggered by the rest of the tile. */
+.project-swipe.open .project-door,
+.project-action-zone:focus-within .project-door{transform:translateX(-100%)}
+@media(hover:hover) and (pointer:fine){
+  .project-action-zone:hover .project-door{transform:translateX(-100%)}
+}
+.project-swipe.open .project-tool,
+.project-action-zone:focus-within .project-tool{pointer-events:auto}
+@media(hover:hover) and (pointer:fine){
+  .project-action-zone:hover .project-tool{pointer-events:auto}
+}
+@media(max-width:699px){
+  .project-swipe .project-row{
+    padding-right:calc(15px + 76px);
+    flex-direction:column;align-items:flex-start;
+  }
+  .project-swipe .project-row time{white-space:normal}
+}
+@media(prefers-reduced-motion:reduce){
+  .project-action-zone .project-door{transition:none}
+}
 
 /* Project deletion is available only when editing and requires exact-name confirmation. */
 .project-dialog .delete-open-button{margin-right:auto;background:#fff0f0;color:#a52828}
