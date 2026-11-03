@@ -344,3 +344,38 @@ app-planner .dialog-actions button{min-height:44px}
   app-planner .planner-modal{padding:20px}
   app-planner .dialog-actions button{flex:1}
 }
+
+/* iOS-style swipe reveal for project rows, with a keyboard-accessible chevron. */
+app-planner .project-swipe{
+  position:relative;isolation:isolate;overflow:hidden;width:100%;min-width:0;
+  border-radius:14px;background:#dcecf9;touch-action:pan-y;
+}
+app-planner .project-swipe .project-tool{
+  position:absolute;top:0;bottom:0;right:0;width:76px;z-index:0;
+  border:0;border-radius:0;background:#216da7;color:#fff;
+  display:grid;place-items:center;cursor:pointer;padding:0;
+}
+app-planner .project-swipe .project-tool svg{width:26px;height:26px}
+app-planner .project-swipe .project-tool:hover,
+app-planner .project-swipe .project-tool:focus-visible{background:#155685}
+app-planner .project-swipe .project-row{
+  position:relative;z-index:1;margin:0;width:100%;min-height:84px;
+  transition:transform .2s cubic-bezier(.2,.75,.2,1);gap:12px;
+}
+app-planner .project-swipe.open .project-row{transform:translateX(-76px)}
+app-planner .project-swipe .project-reveal{
+  flex:0 0 44px;width:44px;height:44px;min-width:44px;padding:0;
+  display:grid;place-items:center;border:0;border-radius:11px;
+  background:#eaf3fc;color:#246b9c;font-size:29px;line-height:1;
+  cursor:pointer;touch-action:manipulation;
+}
+app-planner .project-swipe.open .project-reveal{transform:rotate(180deg)}
+app-planner .project-swipe .project-reveal:hover,
+app-planner .project-swipe .project-reveal:focus-visible{background:#d6eaf9}
+@media(max-width:699px){
+  app-planner .project-swipe .project-row{flex-direction:row;align-items:center}
+  app-planner .project-swipe .project-created{white-space:normal}
+}
+@media(prefers-reduced-motion:reduce){
+  app-planner .project-swipe .project-row{transition:none}
+}

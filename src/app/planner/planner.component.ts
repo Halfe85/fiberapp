@@ -26,13 +26,32 @@ const STORAGE_KEY='fiberapp.planner.projects.v1';
     </div>
     <div class="notice error" *ngIf="error" role="alert">{{error}}</div>
     <div class="project-rows" *ngIf="projects.length; else emptyProjects">
-      <article class="panel project-row" *ngFor="let item of sortedProjects; trackBy:trackId">
-        <div class="project-info">
-          <strong>{{item.name}}</strong>
-          <p *ngIf="item.description">{{item.description}}</p>
-        </div>
-        <time class="project-created" [attr.datetime]="item.createdAt">{{formatDate(item.createdAt)}}</time>
-      </article>
+      <div class="project-swipe" *ngFor="let item of sortedProjects; trackBy:trackId"
+           [class.open]="openProjectId===item.id"
+           (pointerdown)="onProjectPointerDown($event,item.id)"
+           (pointerup)="onProjectPointerUp($event,item.id)"
+           (pointercancel)="pointerStart=null">
+        <button type="button" class="project-tool" title="Prosjektinnstillinger"
+                [attr.aria-label]="'Innstillinger for '+item.name"
+                [attr.tabindex]="openProjectId===item.id ? 0 : -1"
+                (click)="openSettings(item)">
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-7.8 7.8a2.12 2.12 0 0 1-3-3l7.8-7.8a6 6 0 0 1 7.9-7.9z"/>
+          </svg>
+        </button>
+        <article class="panel project-row">
+          <div class="project-info">
+            <strong>{{item.name}}</strong>
+            <p *ngIf="item.description">{{item.description}}</p>
+          </div>
+          <time class="project-created" [attr.datetime]="item.createdAt">{{formatDate(item.createdAt)}}</time>
+          <button type="button" class="project-reveal"
+                  [attr.aria-expanded]="openProjectId===item.id"
+                  [attr.aria-label]="openProjectId===item.id ? 'Lukk prosjektverktøy' : 'Vis prosjektverktøy'"
+                  (click)="toggleTools(item.id)">‹</button>
+        </article>
+      </div>
     </div>
     <ng-template #emptyProjects>
       <div class="empty-projects">
@@ -46,7 +65,7 @@ const STORAGE_KEY='fiberapp.planner.projects.v1';
     <section class="planner-modal" role="dialog" aria-modal="true"
              aria-labelledby="planner-dialog-title" (click)="$event.stopPropagation()">
       <div class="dialog-head">
-        <h2 id="planner-dialog-title">Nytt prosjekt</h2>
+        <h2 id="planner-dialog-title">{{editingId ? 'Prosjektinnstillinger' : 'Nytt prosjekt'}}</h2>
         <button type="button" class="close-button" aria-label="Lukk" (click)="close()">×</button>
       </div>
       <form (ngSubmit)="createProject()">
@@ -59,7 +78,7 @@ const STORAGE_KEY='fiberapp.planner.projects.v1';
         <div class="notice error" *ngIf="formError" role="alert">{{formError}}</div>
         <div class="dialog-actions">
           <button type="button" class="secondary" (click)="close()">Avbryt</button>
-          <button type="submit" [disabled]="!name.trim() || !storageAvailable">Opprett prosjekt</button>
+          <button type="submit" [disabled]="!name.trim() || !storageAvailable">{{editingId ? 'Lagre endringer' : 'Opprett prosjekt'}}</button>
         </div>
       </form>
     </section>
@@ -73,6 +92,9 @@ export class PlannerComponent implements OnInit {
   name='';
   description='';
   storageAvailable=true;
+  openProjectId:string|null=null;
+  editingId:string|null=null;
+  pointerStart:{x:number;y:number;pointerId:number;projectId:string}|null=null;
   constructor(public readonly ui:PlannerUiService){}
   get sortedProjects():Project[]{
     return [...this.projects].sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
@@ -98,14 +120,43 @@ export class PlannerComponent implements OnInit {
       this.error='Kunne ikke lese lagrede prosjekter. Eksisterende data er ikke overskrevet.';
     }
   }
+  toggleTools(id:string):void{this.openProjectId=this.openProjectId===id?null:id;}
+  onProjectPointerDown(event:PointerEvent,id:string):void{
+    if(event.button!==0 || (event.target as Element).closest('.project-tool,.project-reveal'))return;
+    this.pointerStart={x:event.clientX,y:event.clientY,pointerId:event.pointerId,projectId:id};
+  }
+  onProjectPointerUp(event:PointerEvent,id:string):void{
+    const start=this.pointerStart;
+    this.pointerStart=null;
+    if(!start || start.pointerId!==event.pointerId || start.projectId!==id)return;
+    const dx=event.clientX-start.x,dy=event.clientY-start.y;
+    if(Math.abs(dx)<35 || Math.abs(dx)<Math.abs(dy)*1.2)return;
+    if(dx<0)this.openProjectId=id;
+    else if(this.openProjectId===id)this.openProjectId=null;
+  }
+  openSettings(item:Project):void{
+    this.editingId=item.id;
+    this.name=item.name;
+    this.description=item.description||'';
+    this.formError='';
+    this.ui.openCreate();
+  }
   close():void{
     this.ui.closeCreate();
+    this.editingId=null;
     this.name='';
     this.description='';
     this.formError='';
   }
   @HostListener('document:keydown.escape')
-  onEscape():void{if(this.ui.createOpen())this.close();}
+  onEscape():void{
+    if(this.ui.createOpen())this.close();
+    else this.openProjectId=null;
+  }
+  @HostListener('document:pointerdown',['$event'])
+  onOutside(event:PointerEvent):void{
+    if(this.openProjectId && !(event.target as Element).closest('.project-swipe'))this.openProjectId=null;
+  }
   createProject():void{
     if(!this.storageAvailable)return;
     const name=this.name.trim().replace(/\s+/g,' ');
@@ -114,18 +165,22 @@ export class PlannerComponent implements OnInit {
       this.formError='Prosjektnavn må ha 1–80 tegn; beskrivelse maks 300.';
       return;
     }
-    if(this.projects.some(p=>p.name.toLocaleLowerCase('nb-NO')===name.toLocaleLowerCase('nb-NO'))){
+    if(this.projects.some(p=>p.id!==this.editingId &&
+      p.name.toLocaleLowerCase('nb-NO')===name.toLocaleLowerCase('nb-NO'))){
       this.formError='Prosjektnavnet er allerede i bruk.';
       return;
     }
     const now=new Date().toISOString();
     const id=typeof crypto.randomUUID==='function'?crypto.randomUUID()
       :'project-'+Date.now()+'-'+Math.random().toString(36).slice(2);
-    const next:Project[]=[{id,name,description,createdAt:now,updatedAt:now},...this.projects];
+    const next:Project[]=this.editingId
+      ? this.projects.map(p=>p.id===this.editingId?{...p,name,description,updatedAt:now}:p)
+      : [{id,name,description,createdAt:now,updatedAt:now},...this.projects];
     try{
       localStorage.setItem(STORAGE_KEY,JSON.stringify(next));
       this.projects=next;
       this.error='';
+      this.openProjectId=null;
       this.close();
     }catch{
       this.formError='Kunne ikke lagre prosjektet. Kontroller nettleserlagringen.';
