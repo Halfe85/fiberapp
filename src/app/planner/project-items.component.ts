@@ -18,9 +18,21 @@ interface ProjectItem {
   addressSource?:string;
   parcel?:PropertyParcel; // Older saved records
   area?:SelectedArea;
+  boenheter?:UnitRecord[];
   latitude?:number;
   longitude?:number;
   createdAt:string;
+}
+interface UnitRecord {
+  adresse:string;
+  adresseNr:number;
+  adresseBokstav:string;
+  etasje:string;
+  leilighetsnummer:string;
+  source:'Kartverket';
+}
+interface UnitAddressIdentity {
+  street:string;number:number;letter:string;municipality:string;postcode:string;
 }
 interface PropertyParcel {
   propertyId:string;
@@ -37,6 +49,7 @@ interface KartverketAddress {
   postnummer?:string;
   poststed?:string;
   representasjonspunkt?:{lat:number;lon:number};
+  bruksenhetsnummer?:string[];
 }
 interface AddressChoice {
   addressKey:string;
@@ -77,6 +90,9 @@ const ADDRESS_API='https://api.kartverket.no/adresser/v1/sok';
                 {{item.area?.propertyLabel || item.parcel?.propertyLabel || 'tegnet område'}}
               </span>
               <span class="planner-item-note" *ngIf="item.note">{{item.note}}</span>
+              <span class="planner-item-units-count" *ngIf="item.boenheter?.length">
+                {{item.boenheter?.length}} valgte bruksenheter
+              </span>
             </button>
             <button type="button" class="planner-address-edit-tool"
                     [attr.aria-label]="'Rediger adresse: '+item.name"
@@ -112,22 +128,70 @@ const ADDRESS_API='https://api.kartverket.no/adresser/v1/sok';
           <button #addressEditClose type="button" class="close-button" aria-label="Lukk"
                   (click)="closeAddressEditor()">×</button>
         </div>
-        <div class="dialog-actions" *ngIf="!confirmingAddressDelete">
-          <button type="button" class="delete-open-button" (click)="requestAddressDelete()">
-            Slett adresse
-          </button>
+        <div class="address-edit-layout" [class.with-units]="unitsPanelOpen">
+          <div class="address-edit-left">
+            <div class="address-edit-actions" *ngIf="!confirmingAddressDelete">
+              <button type="button" class="secondary" (click)="searchBoenheter()">Søk boenheter</button>
+              <p class="address-units-saved" *ngIf="editingAddress.boenheter?.length">
+                {{editingAddress.boenheter?.length}} valgte bruksenheter i prosjektet
+              </p>
+              <button type="button" class="delete-open-button" (click)="requestAddressDelete()">
+                Slett adresse
+              </button>
+            </div>
+            <section class="address-delete-confirmation" *ngIf="confirmingAddressDelete"
+                     aria-label="Bekreft sletting av adresse">
+              <p>Vil du slette <strong>{{editingAddress.name}}</strong> fra prosjektet?</p>
+              <div class="notice error" *ngIf="deleteAddressError" role="alert">
+                {{deleteAddressError}}
+              </div>
+              <div class="dialog-actions">
+                <button type="button" class="secondary" (click)="cancelAddressDelete()">Avbryt</button>
+                <button type="button" class="delete-confirm-button" (click)="deleteAddress()">Slett</button>
+              </div>
+            </section>
+          </div>
+          <section class="address-units-panel" *ngIf="unitsPanelOpen"
+                   aria-labelledby="ng-address-units-title">
+            <h3 id="ng-address-units-title">Registrerte bruksenheter</h3>
+            <p class="address-units-status" role="status" aria-live="polite">{{unitsStatus}}</p>
+            <div class="address-units-table-wrap" *ngIf="foundUnits.length">
+              <table class="address-units-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Velg</th>
+                    <th scope="col">Adresse</th>
+                    <th scope="col">Nr.</th>
+                    <th scope="col">Bokstav</th>
+                    <th scope="col">Etasje</th>
+                    <th scope="col">Leilighetsnummer</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let unit of foundUnits; trackBy:trackUnitNumber">
+                    <td>
+                      <input type="checkbox" [checked]="unitSelection.has(unit.leilighetsnummer)"
+                             [attr.aria-label]="'Velg '+unit.leilighetsnummer+' i '+unit.adresse+' '+unit.adresseNr+unit.adresseBokstav"
+                             (change)="changeUnitSelection(unit.leilighetsnummer,$event)">
+                    </td>
+                    <td>{{unit.adresse}}</td>
+                    <td>{{unit.adresseNr}}</td>
+                    <td>{{unit.adresseBokstav || '–'}}</td>
+                    <td>{{unit.etasje}}</td>
+                    <td>{{unit.leilighetsnummer}}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="address-units-hint">
+              Kartverkets adresse-API oppgir bruksenhetsnummer, men ikke om enheten er godkjent bolig.
+            </p>
+            <div class="dialog-actions address-units-footer">
+              <button type="button" [disabled]="!unitsReady || unitsLoading || !foundUnits.length || !canSave"
+                      (click)="saveBoenheter()">OK</button>
+            </div>
+          </section>
         </div>
-        <section class="address-delete-confirmation" *ngIf="confirmingAddressDelete"
-                 aria-label="Bekreft sletting av adresse">
-          <p>Vil du slette <strong>{{editingAddress.name}}</strong> fra prosjektet?</p>
-          <div class="notice error" *ngIf="deleteAddressError" role="alert">
-            {{deleteAddressError}}
-          </div>
-          <div class="dialog-actions">
-            <button type="button" class="secondary" (click)="cancelAddressDelete()">Avbryt</button>
-            <button type="button" class="delete-confirm-button" (click)="deleteAddress()">Slett</button>
-          </div>
-        </section>
       </section>
     </div>
     <div class="planner-modal-backdrop" *ngIf="ui.itemModal()" (click)="close()">
@@ -213,6 +277,14 @@ export class ProjectItemsComponent implements OnInit,OnChanges,OnDestroy {
   items:ProjectItem[]=[];
   selectedAddressId:string|null=null;
   editingAddress:ProjectItem|null=null;
+  unitsPanelOpen=false;
+  unitsLoading=false;
+  unitsReady=false;
+  unitsStatus='';
+  foundUnits:UnitRecord[]=[];
+  readonly unitSelection=new Set<string>();
+  private unitsSequence=0;
+  private unitsAbort:AbortController|null=null;
   confirmingAddressDelete=false;
   deleteAddressError='';
   readonly dismissedAddressTools=new Set<string>();
@@ -369,14 +441,155 @@ export class ProjectItemsComponent implements OnInit,OnChanges,OnDestroy {
     if(this.editorOpenedByPointer)this.dismissedAddressTools.add(item.id);
     this.confirmingAddressDelete=false;
     this.deleteAddressError='';
+    this.resetBoenheterSearch();
     this.editingAddress=item;
   }
+
+  private resetBoenheterSearch():void {
+    this.unitsSequence++;
+    this.unitsAbort?.abort();
+    this.unitsAbort=null;
+    this.unitsPanelOpen=false;
+    this.unitsLoading=false;
+    this.unitsReady=false;
+    this.unitsStatus='';
+    this.foundUnits=[];
+    this.unitSelection.clear();
+  }
+  private addressIdentity(item:ProjectItem):UnitAddressIdentity|null {
+    const match=/^(.+?)\s+(\d+)([A-Za-zÆØÅæøå]?)$/u.exec(String(item.name||'').trim());
+    if(!match)return null;
+    const parts=String(item.addressKey||'').split('|');
+    const number=parts.length===5 && /^\d+$/.test(parts[2])
+      ? Number(parts[2]):Number(match[2]);
+    const letter=(parts.length===5?parts[3]:match[3]||'').trim().toLocaleUpperCase('nb-NO');
+    return {
+      street:match[1].trim(),number,letter,
+      municipality:parts.length===5 && /^\d{4}$/.test(parts[0])?parts[0]:'',
+      postcode:String(item.postcode||'').trim()
+    };
+  }
+  private normalizeBoenheter(data:unknown,identity:UnitAddressIdentity):UnitRecord[] {
+    const entries=(data as {adresser?:KartverketAddress[]}|null)?.adresser;
+    const numbers=new Set<string>();
+    for(const entry of Array.isArray(entries)?entries:[]){
+      if(entry?.objtype!=='Vegadresse' ||
+         String(entry.adressenavn||'').trim().toLocaleLowerCase('nb-NO')!==
+           identity.street.toLocaleLowerCase('nb-NO') ||
+         Number(entry.nummer)!==identity.number ||
+         String(entry.bokstav||'').trim().toLocaleUpperCase('nb-NO')!==identity.letter ||
+         (identity.postcode && String(entry.postnummer||'')!==identity.postcode) ||
+         (identity.municipality && String(entry.kommunenummer||'')!==identity.municipality))continue;
+      for(const value of Array.isArray(entry.bruksenhetsnummer)?entry.bruksenhetsnummer:[]){
+        if(typeof value!=='string')continue;
+        const number=value.trim().toUpperCase();
+        if(/^[HKUL]\d{4}$/.test(number))numbers.add(number);
+      }
+    }
+    return [...numbers].sort((a,b)=>a.localeCompare(b,'nb-NO')).map(number=>({
+      adresse:identity.street,adresseNr:identity.number,adresseBokstav:identity.letter,
+      etasje:number.slice(0,3),leilighetsnummer:number,source:'Kartverket'
+    }));
+  }
+  trackUnitNumber(_index:number,unit:UnitRecord):string{return unit.leilighetsnummer;}
+  changeUnitSelection(number:string,event:Event):void {
+    if((event.target as HTMLInputElement).checked)this.unitSelection.add(number);
+    else this.unitSelection.delete(number);
+  }
+  async searchBoenheter():Promise<void> {
+    const item=this.editingAddress,projectId=this.projectId;
+    if(!item || item.projectId!==projectId || item.kind!=='address')return;
+    this.resetBoenheterSearch();
+    this.unitsPanelOpen=true;
+    this.unitsLoading=true;
+    this.unitsStatus='Søker etter registrerte bruksenhetsnummer hos Kartverket …';
+    const identity=this.addressIdentity(item);
+    if(!identity){
+      this.unitsLoading=false;
+      this.unitsStatus='Adressen kunne ikke tolkes til gatenavn og husnummer.';
+      return;
+    }
+    const params=new URLSearchParams({
+      adressenavn:identity.street,nummer:String(identity.number),bokstav:identity.letter,
+      objtype:'Vegadresse',treffPerSide:'100',side:'0'
+    });
+    if(identity.postcode)params.set('postnummer',identity.postcode);
+    if(identity.municipality)params.set('kommunenummer',identity.municipality);
+    const token=++this.unitsSequence;
+    const controller=new AbortController();
+    this.unitsAbort=controller;
+    try{
+      const response=await fetch(ADDRESS_API+'?'+params.toString(),{
+        signal:controller.signal,headers:{Accept:'application/json'}
+      });
+      if(!response.ok)throw new Error('Kartverket: '+response.status);
+      const data:unknown=await response.json();
+      if(token!==this.unitsSequence || controller.signal.aborted ||
+         this.editingAddress?.id!==item.id || this.projectId!==projectId)return;
+      this.foundUnits=this.normalizeBoenheter(data,identity);
+      const saved=new Set((Array.isArray(item.boenheter)?item.boenheter:[])
+        .map(unit=>unit?.leilighetsnummer).filter((v):v is string=>typeof v==='string'));
+      this.unitSelection.clear();
+      for(const unit of this.foundUnits)
+        if(saved.has(unit.leilighetsnummer))this.unitSelection.add(unit.leilighetsnummer);
+      this.unitsReady=true;
+      this.unitsStatus=this.foundUnits.length
+        ? 'Fant '+this.foundUnits.length+
+          ' registrerte bruksenhetsnummer. Huk av enhetene som skal inngå i prosjektet.'
+        : 'Ingen registrerte bruksenhetsnummer funnet for denne vegadressen. Ingen enheter er lagt til.';
+    }catch{
+      if(token!==this.unitsSequence || controller.signal.aborted)return;
+      this.unitsStatus='Kunne ikke hente bruksenheter fra Kartverket. Prøv søket på nytt.';
+    }finally{
+      if(token===this.unitsSequence){
+        this.unitsAbort=null;
+        this.unitsLoading=false;
+      }
+    }
+  }
+  saveBoenheter():void {
+    const item=this.editingAddress,projectId=this.projectId;
+    if(!item || item.projectId!==projectId || item.kind!=='address' ||
+       !this.unitsReady || this.unitsLoading || !this.foundUnits.length || !this.canSave)return;
+    try{
+      const raw=localStorage.getItem(KEY);
+      const data:unknown=raw?JSON.parse(raw):[];
+      if(!Array.isArray(data))throw new Error('Ugyldig lagring');
+      const idx=data.findIndex((row:unknown)=>row!==null && typeof row==='object' &&
+        (row as Partial<ProjectItem>).id===item.id &&
+        (row as Partial<ProjectItem>).projectId===projectId &&
+        (row as Partial<ProjectItem>).kind==='address');
+      if(idx<0){
+        this.unitsStatus='Adressen finnes ikke lenger i prosjektet.';
+        return;
+      }
+      const selected=this.foundUnits.filter(unit=>this.unitSelection.has(unit.leilighetsnummer));
+      const next=data.slice();
+      next[idx]={...next[idx],boenheter:selected};
+      localStorage.setItem(KEY,JSON.stringify(next));
+      this.items=next.filter((row:unknown):row is ProjectItem=>{
+        if(!row || typeof row!=='object')return false;
+        const rec=row as Partial<ProjectItem>;
+        return typeof rec.id==='string' && typeof rec.projectId==='string' &&
+          (rec.kind==='address'||rec.kind==='equipment') && typeof rec.name==='string';
+      });
+      this.storageError='';
+      this.closeAddressEditor();
+      window.dispatchEvent(new CustomEvent('fiberapp:planner-items-changed',{
+        detail:{projectId}
+      }));
+    }catch{
+      this.unitsStatus='Kunne ikke lagre boenhetene i nettleseren. Ingen endringer ble lagret.';
+    }
+  }
+
   onAddressRowPointerLeave(item:ProjectItem):void {
     // Do not clear this just because the overlay obscured the row on open.
     if(this.editingAddress?.id!==item.id)this.dismissedAddressTools.delete(item.id);
   }
   requestAddressDelete():void {
     if(!this.editingAddress)return;
+    this.resetBoenheterSearch();
     this.deleteAddressError='';
     this.confirmingAddressDelete=true;
   }
@@ -427,6 +640,7 @@ export class ProjectItemsComponent implements OnInit,OnChanges,OnDestroy {
     }
   }
   closeAddressEditor():void {
+    this.resetBoenheterSearch();
     this.editingAddress=null;
     this.confirmingAddressDelete=false;
     this.deleteAddressError='';
@@ -483,6 +697,7 @@ export class ProjectItemsComponent implements OnInit,OnChanges,OnDestroy {
   }
   ngOnDestroy():void{
     this.cancelSearch();
+    this.resetBoenheterSearch();
     this.editingAddress=null;
     this.confirmingAddressDelete=false;
     this.deleteAddressError='';
