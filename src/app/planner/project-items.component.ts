@@ -676,7 +676,12 @@ export class ProjectItemsComponent implements OnInit,OnChanges,OnDestroy {
     }
   }
   ngOnChanges(changes:SimpleChanges):void {
-    if(changes['projectId'])this.selectedAddressId=null;
+    if(changes['projectId']){
+      this.selectedAddressId=null;
+      // The address editor must not remain open for a different project.
+      if(this.editingAddress && this.editingAddress.projectId!==this.projectId)
+        this.closeAddressEditor();
+    }
   }
   ngOnInit():void{
     try{
