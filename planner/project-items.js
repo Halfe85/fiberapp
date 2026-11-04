@@ -31,6 +31,13 @@
   const addressEmpty = document.getElementById('project-addresses-empty');
   const editDialog = document.getElementById('project-address-edit-dialog');
   const editClose = document.getElementById('project-address-edit-close');
+  const unitsSearch = document.getElementById('project-address-units-search');
+  const unitsPanel = document.getElementById('project-address-units-panel');
+  const unitsStatus = document.getElementById('project-address-units-status');
+  const unitsRows = document.getElementById('project-address-units-rows');
+  const unitsTableWrap = document.getElementById('project-address-units-table-wrap');
+  const unitsOk = document.getElementById('project-address-units-ok');
+  const unitsSaved = document.getElementById('project-address-units-saved');
   const editActions = document.getElementById('project-address-edit-actions');
   const deleteOpen = document.getElementById('project-address-delete-open');
   const deleteConfirmation = document.getElementById('project-address-delete-confirmation');
@@ -79,6 +86,165 @@
   let editReturnFocus = null;
   let editActiveRow = null;
   let editOpenedByPointer = false;
+  let unitsRequest=0;
+  let unitsAbort=null;
+  let foundUnits=[];
+  let checkedUnits=new Set();
+  let unitsReady=false;
+  function cancelUnitsSearch(){
+    unitsRequest++;
+    unitsAbort?.abort();
+    unitsAbort=null;
+  }
+  function resetUnitsSearch(){
+    cancelUnitsSearch();
+    foundUnits=[];
+    checkedUnits=new Set();
+    unitsReady=false;
+    unitsRows.replaceChildren();
+    unitsTableWrap.hidden=true;
+    unitsOk.disabled=true;
+    unitsPanel.hidden=true;
+    unitsStatus.textContent='';
+    editDialog.classList.remove('is-units-open');
+  }
+  // Unit numbers (H0102) encode the floor in the leading letter + two digits.
+  function addressIdentity(item){
+    const match=/^(.+?)\\s+(\\d+)([A-Za-zÆØÅæøå]?)$/u.exec(String(item.name||'').trim());
+    if(!match)return null;
+    const parts=String(item.addressKey||'').split('|');
+    const houseNumber=parts.length===5 && /^\\d+$/.test(parts[2])
+      ? Number(parts[2]):Number(match[2]);
+    const letter=(parts.length===5?parts[3]:match[3]||'').trim().toLocaleUpperCase('nb-NO');
+    return {
+      street:match[1].trim(),number:houseNumber,letter,
+      municipality:parts.length===5 && /^\\d{4}$/.test(parts[0])?parts[0]:'',
+      postcode:String(item.postcode||'').trim()
+    };
+  }
+  function normalizeUnitResults(api,identity){
+    const entries=Array.isArray(api?.adresser)?api.adresser:[];
+    const accepted=new Set();
+    const expectedStreet=identity.street.toLocaleLowerCase('nb-NO');
+    for(const entry of entries){
+      if(entry?.objtype!=='Vegadresse' ||
+         String(entry.adressenavn||'').trim().toLocaleLowerCase('nb-NO')!==expectedStreet ||
+         Number(entry.nummer)!==identity.number ||
+         String(entry.bokstav||'').trim().toLocaleUpperCase('nb-NO')!==identity.letter ||
+         (identity.postcode && String(entry.postnummer||'')!==identity.postcode) ||
+         (identity.municipality && String(entry.kommunenummer||'')!==identity.municipality))continue;
+      for(const number of Array.isArray(entry.bruksenhetsnummer)?entry.bruksenhetsnummer:[]){
+        if(typeof number!=='string')continue;
+        const normalized=number.trim().toUpperCase();
+        if(/^[HKUL]\\d{4}$/.test(normalized))accepted.add(normalized);
+      }
+    }
+    return [...accepted].sort((a,b)=>a.localeCompare(b,'nb-NO')).map(number=>({
+      adresse:identity.street,adresseNr:identity.number,adresseBokstav:identity.letter,
+      etasje:number.slice(0,3),leilighetsnummer:number,source:'Kartverket'
+    }));
+  }
+  function renderUnits(){
+    unitsRows.replaceChildren();
+    for(const unit of foundUnits){
+      const row=document.createElement('tr');
+      const first=document.createElement('td');
+      const checkbox=document.createElement('input');
+      checkbox.type='checkbox';
+      checkbox.checked=checkedUnits.has(unit.leilighetsnummer);
+      checkbox.setAttribute('aria-label','Velg '+unit.leilighetsnummer+' i '+unit.adresse+' '+unit.adresseNr+unit.adresseBokstav);
+      checkbox.addEventListener('change',()=>{
+        if(checkbox.checked)checkedUnits.add(unit.leilighetsnummer);
+        else checkedUnits.delete(unit.leilighetsnummer);
+      });
+      first.append(checkbox);
+      row.append(first);
+      for(const value of [unit.adresse,unit.adresseNr,unit.adresseBokstav||'–',unit.etasje,unit.leilighetsnummer]){
+        const cell=document.createElement('td');
+        cell.textContent=String(value);
+        row.append(cell);
+      }
+      unitsRows.append(row);
+    }
+    unitsTableWrap.hidden=!foundUnits.length;
+    unitsOk.disabled=!unitsReady || !foundUnits.length;
+  }
+  async function searchUnits(){
+    const projectId=selectedProject(),id=editDialog.dataset.addressId;
+    if(!editDialog.open || !projectId || !id)return;
+    const item=rows.find(row=>row && row.id===id && row.projectId===projectId && row.kind==='address');
+    if(!item)return;
+    resetUnitsSearch();
+    unitsPanel.hidden=false;
+    editDialog.classList.add('is-units-open');
+    unitsStatus.textContent='Søker etter registrerte bruksenhetsnummer hos Kartverket …';
+    const identity=addressIdentity(item);
+    if(!identity){
+      unitsStatus.textContent='Adressen kunne ikke tolkes til gatenavn og husnummer.';
+      return;
+    }
+    const params=new URLSearchParams({
+      adressenavn:identity.street,nummer:String(identity.number),bokstav:identity.letter,
+      objtype:'Vegadresse',treffPerSide:'100',side:'0'
+    });
+    if(identity.postcode)params.set('postnummer',identity.postcode);
+    if(identity.municipality)params.set('kommunenummer',identity.municipality);
+    const token=++unitsRequest;
+    const controller=new AbortController();
+    unitsAbort=controller;
+    try{
+      const response=await fetch(ADDRESS_API+'?'+params.toString(),{
+        signal:controller.signal,headers:{Accept:'application/json'}
+      });
+      if(!response.ok)throw new Error('Kartverket: '+response.status);
+      const data=await response.json();
+      if(token!==unitsRequest || controller.signal.aborted ||
+         !editDialog.open || selectedProject()!==projectId ||
+         editDialog.dataset.addressId!==id)return;
+      foundUnits=normalizeUnitResults(data,identity);
+      const existing=Array.isArray(item.boenheter)?item.boenheter:[];
+      const savedNumbers=new Set(existing.map(unit=>unit?.leilighetsnummer).filter(Boolean));
+      checkedUnits=new Set(foundUnits.filter(unit=>savedNumbers.has(unit.leilighetsnummer))
+        .map(unit=>unit.leilighetsnummer));
+      unitsReady=true;
+      renderUnits();
+      unitsStatus.textContent=foundUnits.length
+        ? 'Fant '+foundUnits.length+' registrerte bruksenhetsnummer. Huk av enhetene som skal inngå i prosjektet.'
+        : 'Ingen registrerte bruksenhetsnummer funnet for denne vegadressen. Ingen enheter er lagt til.';
+    }catch(error){
+      if(token!==unitsRequest || controller.signal.aborted)return;
+      unitsStatus.textContent='Kunne ikke hente bruksenheter fra Kartverket. Prøv søket på nytt.';
+    }finally{
+      if(token===unitsRequest)unitsAbort=null;
+    }
+  }
+  function saveUnits(){
+    const projectId=selectedProject(),id=editDialog.dataset.addressId;
+    if(!editDialog.open || !unitsReady || !foundUnits.length || !canSave || !projectId || !id)return;
+    try{
+      const raw=localStorage.getItem(KEY);
+      const all=raw?JSON.parse(raw):[];
+      if(!Array.isArray(all))throw new Error('Ugyldig lagring');
+      const index=all.findIndex(item=>item && item.id===id &&
+        item.projectId===projectId && item.kind==='address');
+      if(index<0){
+        unitsStatus.textContent='Adressen finnes ikke lenger i prosjektet.';
+        return;
+      }
+      const selected=foundUnits.filter(unit=>checkedUnits.has(unit.leilighetsnummer));
+      const next=all.slice();
+      next[index]={...next[index],boenheter:selected};
+      localStorage.setItem(KEY,JSON.stringify(next));
+      rows=next;
+      editDialog.close();
+      render();
+      window.dispatchEvent(new CustomEvent('fiberapp:planner-items-changed',{
+        detail:{projectId}
+      }));
+    }catch{
+      unitsStatus.textContent='Kunne ikke lagre boenhetene i nettleseren. Ingen endringer ble lagret.';
+    }
+  }
   function resetAddressDelete(){
     editActions.hidden=false;
     deleteConfirmation.hidden=true;
@@ -103,6 +269,10 @@
     if(editOpenedByPointer)row?.classList.add('address-tool-dismissed');
     editDialog.dataset.addressId = item.id;
     resetAddressDelete();
+    resetUnitsSearch();
+    const savedCount=Array.isArray(item.boenheter)?item.boenheter.length:0;
+    unitsSaved.textContent=savedCount+' valgte bruksenheter i prosjektet';
+    unitsSaved.hidden=!savedCount;
     editReturnFocus = trigger;
     editDialog.showModal();
     editClose.focus();
@@ -318,6 +488,12 @@
           type.textContent = item.equipmentType;
           content.append(type);
         }
+        if(kind==='address' && Array.isArray(item.boenheter) && item.boenheter.length){
+          const unitsLabel=document.createElement('span');
+          unitsLabel.className='project-item-units-count';
+          unitsLabel.textContent=item.boenheter.length+' valgte bruksenheter';
+          content.append(unitsLabel);
+        }
         if (kind === 'address' && (item.area || item.parcel)) {
           const area = item.area || item.parcel;
           const areaInfo = document.createElement('span');
@@ -420,7 +596,10 @@
     toggle.setAttribute('aria-expanded', String(!menu.hidden));
   });
   if(editDialog && editClose){
+    unitsSearch.addEventListener('click',searchUnits);
+    unitsOk.addEventListener('click',saveUnits);
     deleteOpen.addEventListener('click',()=>{
+      resetUnitsSearch();
       const projectId=selectedProject(),itemId=editDialog.dataset.addressId;
       const address=rows.find(item=>item.kind==='address' &&
         item.projectId===projectId && item.id===itemId);
@@ -471,6 +650,7 @@
       if(event.target===editDialog)editDialog.close();
     });
     editDialog.addEventListener('close',()=>{
+      resetUnitsSearch();
       resetAddressDelete();
       delete editDialog.dataset.addressId;
       editActiveRow?.classList.remove('address-tool-modal-open');

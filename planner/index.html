@@ -14,7 +14,7 @@
   </style>
   <link rel="stylesheet" href="../site-shell.css?v=mobile-tool-title-1">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="./projects.css?v=20"></head>
+<link rel="stylesheet" href="./projects.css?v=21"></head>
 <body>
   <header class="site-header planner-header"><div class="site-shell"><div class="site-actions"><button class="menu-toggle header-icon" type="button" aria-label="Åpne meny" aria-controls="site-menu" aria-expanded="false" title="Meny"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button><a class="home-link header-icon" href="../" aria-label="Hjem" title="Hjem"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7"/><path d="M5 9v12h14V9"/><path d="M9 21v-8h6v8"/></svg></a><button type="button" class="project-header-back header-icon" id="project-back" title="Tilbake til prosjekter" aria-label="Tilbake til prosjekter" hidden><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7M5 12h14"/></svg></button></div><a class="site-brand" href="../" aria-label="FiberApp forside">FIBER<span>APP</span></a><nav class="site-menu" id="site-menu" aria-label="Verktøymeny" hidden><a href="../finder/">Fiberfinder</a><a href="../planner/" aria-current="page">Fiber Planner</a></nav><h1 class="site-page-title">Fiber Planner</h1><button class="planner-add header-icon" type="button" id="add-project" aria-label="Nytt prosjekt" title="Nytt prosjekt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button><div class="planner-project-actions" id="project-actions" hidden>
   <button type="button" class="planner-add header-icon" id="project-add-toggle" aria-label="Legg til i prosjekt" aria-controls="project-add-menu" aria-expanded="false" title="Legg til i prosjekt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
@@ -167,23 +167,51 @@
     <h2 id="project-address-edit-title">Rediger adresse</h2>
     <button type="button" id="project-address-edit-close" class="close-button" aria-label="Lukk">×</button>
   </div>
-  <div id="project-address-edit-actions" class="dialog-actions">
-    <button type="button" id="project-address-delete-open" class="delete-open-button">Slett adresse</button>
-  </div>
-  <section id="project-address-delete-confirmation" class="address-delete-confirmation"
-           aria-label="Bekreft sletting av adresse" hidden>
-    <p>Vil du slette <strong id="project-address-delete-target"></strong> fra prosjektet?</p>
-    <p id="project-address-delete-error" class="project-error" role="alert" hidden></p>
-    <div class="dialog-actions">
-      <button type="button" id="project-address-delete-cancel" class="secondary-button">Avbryt</button>
-      <button type="button" id="project-address-delete-confirm" class="delete-confirm-button">Slett</button>
+  <div class="address-edit-layout">
+    <div class="address-edit-left">
+      <div id="project-address-edit-actions" class="address-edit-actions">
+        <button type="button" id="project-address-units-search" class="secondary-button">Søk boenheter</button>
+        <p id="project-address-units-saved" class="address-units-saved" hidden></p>
+        <button type="button" id="project-address-delete-open" class="delete-open-button">Slett adresse</button>
+      </div>
+      <section id="project-address-delete-confirmation" class="address-delete-confirmation"
+               aria-label="Bekreft sletting av adresse" hidden>
+        <p>Vil du slette <strong id="project-address-delete-target"></strong> fra prosjektet?</p>
+        <p id="project-address-delete-error" class="project-error" role="alert" hidden></p>
+        <div class="dialog-actions">
+          <button type="button" id="project-address-delete-cancel" class="secondary-button">Avbryt</button>
+          <button type="button" id="project-address-delete-confirm" class="delete-confirm-button">Slett</button>
+        </div>
+      </section>
     </div>
-  </section>
+    <section id="project-address-units-panel" class="address-units-panel"
+             aria-labelledby="project-address-units-title" hidden>
+      <h3 id="project-address-units-title">Registrerte bruksenheter</h3>
+      <p id="project-address-units-status" class="address-units-status" role="status" aria-live="polite"></p>
+      <div id="project-address-units-table-wrap" class="address-units-table-wrap" hidden>
+        <table class="address-units-table">
+          <thead><tr>
+            <th scope="col">Velg</th>
+            <th scope="col">Adresse</th>
+            <th scope="col">Nr.</th>
+            <th scope="col">Bokstav</th>
+            <th scope="col">Etasje</th>
+            <th scope="col">Leilighetsnummer</th>
+          </tr></thead>
+          <tbody id="project-address-units-rows"></tbody>
+        </table>
+      </div>
+      <p class="address-units-hint">Kartverkets adresse-API oppgir bruksenhetsnummer, men ikke om enheten er godkjent bolig.</p>
+      <div class="dialog-actions address-units-footer">
+        <button type="button" id="project-address-units-ok" class="primary-button" disabled>OK</button>
+      </div>
+    </section>
+  </div>
 </dialog>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
 <script src="../site-menu.js" defer></script>
 <script src="./projects.js?v=9" defer></script>
-<script src="./project-items.js?v=12" defer></script>
+<script src="./project-items.js?v=13" defer></script>
 <script src="./map.js?v=9" defer></script>
 <script src="./address-area-map.js?v=2" defer></script>
 </body>
