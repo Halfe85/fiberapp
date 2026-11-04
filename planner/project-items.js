@@ -110,15 +110,15 @@
   }
   // Unit numbers (H0102) encode the floor in the leading letter + two digits.
   function addressIdentity(item){
-    const match=/^(.+?)\\s+(\\d+)([A-Za-zÆØÅæøå]?)$/u.exec(String(item.name||'').trim());
+    const match=/^(.+?)\s+(\d+)([A-Za-zÆØÅæøå]?)$/u.exec(String(item.name||'').trim());
     if(!match)return null;
     const parts=String(item.addressKey||'').split('|');
-    const houseNumber=parts.length===5 && /^\\d+$/.test(parts[2])
+    const houseNumber=parts.length===5 && /^\d+$/.test(parts[2])
       ? Number(parts[2]):Number(match[2]);
     const letter=(parts.length===5?parts[3]:match[3]||'').trim().toLocaleUpperCase('nb-NO');
     return {
       street:match[1].trim(),number:houseNumber,letter,
-      municipality:parts.length===5 && /^\\d{4}$/.test(parts[0])?parts[0]:'',
+      municipality:parts.length===5 && /^\d{4}$/.test(parts[0])?parts[0]:'',
       postcode:String(item.postcode||'').trim()
     };
   }
@@ -136,7 +136,7 @@
       for(const number of Array.isArray(entry.bruksenhetsnummer)?entry.bruksenhetsnummer:[]){
         if(typeof number!=='string')continue;
         const normalized=number.trim().toUpperCase();
-        if(/^[HKUL]\\d{4}$/.test(normalized))accepted.add(normalized);
+        if(/^[HKUL]\d{4}$/.test(normalized))accepted.add(normalized);
       }
     }
     return [...accepted].sort((a,b)=>a.localeCompare(b,'nb-NO')).map(number=>({
