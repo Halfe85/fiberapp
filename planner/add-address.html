@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="no">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1,viewport-fit=cover">
+<title>Legg til adresse | Fiber Planner</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="./building-workflow.css?v=1"></head>
+<body>
+<header class="wf-header"><a id="back-to-project" href="./">← Prosjekt</a>
+<div><h1>Legg til adresse</h1><p>Finn adresse på kartet og velg bruksenheter</p></div></header>
+<main class="wf-layout">
+<aside class="wf-side">
+ <h2>1. Finn adresse</h2>
+ <label class="wf-label" for="address-search-query">Søk i Kartverkets adresseregister</label>
+ <input class="wf-input" type="search" id="address-search-query" autocomplete="off"
+        spellcheck="false" placeholder="F.eks. Storgata 12">
+ <label class="wf-checkline"><input type="checkbox" id="address-postcode-filter" checked>
+  Begrens søk til prosjektets postnummer <span id="address-postcode-label"></span>
+ </label>
+ <p class="wf-hint">Du kan også trykke direkte på kartet. Klikket søker etter offisielle adresser i nærheten; treffene er forslag, ikke en bekreftet bygningsgrense.</p>
+ <p id="address-search-status" class="wf-status" role="status" aria-live="polite">Søk etter en adresse eller trykk i kartet.</p>
+ <div id="address-search-choices" class="wf-choices" aria-label="Adresseforslag"></div>
+ <p id="address-selected-label" class="wf-status" hidden></p>
+ <h2>2. Velg bruksenheter</h2>
+ <p class="wf-hint">Etasjene og den logiske byggvisningen genereres av valgte bruksenhetsnumre. Dette er ikke en fysisk fasadetegning.</p>
+ <p id="address-units-status" class="wf-status">Velg en offisiell adresse først.</p>
+ <div id="address-units-table-wrap" class="wf-table-scroll" hidden>
+  <table class="wf-table"><thead><tr><th>Velg</th><th>Adresse</th><th>Nr.</th><th>Bokstav</th><th>Etasje</th><th>Leilighet</th></tr></thead>
+   <tbody id="address-units-rows"></tbody></table>
+ </div>
+ <label class="wf-checkline"><input type="checkbox" id="address-select-all"> Velg alle funne bruksenheter</label>
+ <button type="button" class="wf-action" id="address-save" disabled>Legg til adresse og åpne 2D-bygg</button>
+ <p class="wf-hint">Kartverkets åpne API viser bruksenhetsnumre, men ikke nødvendigvis om enheten er godkjent bolig. Ved null treff kan adressen fortsatt lagres uten bruksenheter.</p>
+</aside>
+<section class="wf-map-wrap" aria-label="Kartvelger">
+ <div id="address-pick-map" role="region" aria-label="Klikkbart Kartverket-kart"></div>
+ <p class="wf-map-info">Trykk på en bygning på kartet for å se nærliggende offisielle adresser, velg deretter riktig treff.</p>
+</section>
+</main>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+<script src="./address-picker.js?v=1" defer></script>
+</body></html>
