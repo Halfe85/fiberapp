@@ -33,6 +33,7 @@
   const wrenchSvg = "<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-7.8 7.8a2.12 2.12 0 0 1-3-3l7.8-7.8a6 6 0 0 1 7.9-7.9z\"/></svg>";
   let projects = [];
   let openId = null;
+  let doorTimer = null;
   let editingId = null;
   let storageAvailable = true;
   try {
@@ -48,10 +49,33 @@
     button.disabled = true;
     setError(warning, 'Kunne ikke lese lagrede prosjekter. Eksisterende data er ikke overskrevet.');
   }
-  function showTools(id) {
-    openId = openId === id ? null : id;
+  // Mobile uses a tap-controlled door; desktop keeps its zone-only hover.
+  const isTouchLayout = () => window.matchMedia?.(
+    '(hover: none), (pointer: coarse), (max-width: 699px)'
+  ).matches ?? false;
+  function closeTools() {
+    if (doorTimer !== null) clearTimeout(doorTimer);
+    doorTimer = null;
+    openId = null;
     for (const row of list.querySelectorAll('.project-swipe')) {
-      row.classList.toggle('open', row.dataset.projectId === openId);
+      row.classList.remove('open');
+      row.querySelector('.project-door')?.setAttribute('aria-expanded','false');
+    }
+  }
+  function showTools(id) {
+    if (openId === id) {
+      closeTools();
+      return;
+    }
+    closeTools(); // Only one project can expose its settings action.
+    openId = id;
+    for (const row of list.querySelectorAll('.project-swipe')) {
+      const opened=row.dataset.projectId === id;
+      row.classList.toggle('open', opened);
+      row.querySelector('.project-door')?.setAttribute('aria-expanded',String(opened));
+    }
+    if (isTouchLayout()) {
+      doorTimer = setTimeout(() => closeTools(), 3000);
     }
   }
   function resetDeleteView() {
@@ -62,6 +86,7 @@
     setError(deleteError, '');
   }
   function startSettings(project) {
+    closeTools();
     resetDeleteView();
     deleteOpen.hidden = false;
     editingId = project.id;
@@ -84,6 +109,7 @@
     backButton.hidden = !selected;
     itemActions.hidden = !selected;
     plannerHeader.classList.toggle('project-open', Boolean(selected));
+    if(selected)closeTools();
     window.dispatchEvent(new CustomEvent('fiberapp:planner-project-changed', {
       detail: {projectId: selected ? selected.id : null}
     }));
@@ -124,9 +150,18 @@
     tool.title = 'Prosjektinnstillinger';
     tool.innerHTML = wrenchSvg;
     tool.addEventListener('click', () => startSettings(project));
-    const door = document.createElement('span');
+    const door = document.createElement('button');
+    door.type = 'button';
     door.className = 'project-door';
-    door.setAttribute('aria-hidden', 'true');
+    door.setAttribute('aria-label','Vis innstillinger for '+project.name);
+    door.setAttribute('aria-expanded','false');
+    door.title = 'Vis prosjektinnstillinger';
+    door.addEventListener('click', event => {
+      event.stopPropagation();
+      showTools(project.id);
+      // Touch clicks leave focus behind; it must not force the door open.
+      if(event.detail !== 0)door.blur();
+    });
     action.append(tool, door);
 
     const row = document.createElement('article');
@@ -134,12 +169,7 @@
     row.setAttribute('role', 'button');
     row.setAttribute('tabindex', '0');
     row.setAttribute('aria-label', 'Åpne prosjekt: ' + project.name);
-    let swipeConsumed = false;
-    row.addEventListener('pointerdown', () => { swipeConsumed = false; });
-    row.addEventListener('click', () => {
-      if (swipeConsumed) { swipeConsumed = false; return; }
-      openProject(project.id);
-    });
+    row.addEventListener('click', () => openProject(project.id));
     row.addEventListener('keydown', event => {
       if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
@@ -162,29 +192,11 @@
     row.append(info, date);
     wrap.append(row, action);
 
-    let start = null;
-    wrap.addEventListener('pointerdown', event => {
-      // Mouse users only reveal the wrench by hovering its right-hand zone.
-      if (event.pointerType === 'mouse' || event.button !== 0 ||
-          event.target.closest('.project-action-zone')) return;
-      start = { x:event.clientX, y:event.clientY, id:event.pointerId };
-    });
-    wrap.addEventListener('pointerup', event => {
-      if (!start || event.pointerId !== start.id) return;
-      const dx = event.clientX - start.x;
-      const dy = event.clientY - start.y;
-      start = null;
-      if (Math.abs(dx) < 35 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
-      swipeConsumed = true;
-      if (dx < 0 && openId !== project.id) showTools(project.id);
-      else if (dx > 0 && openId === project.id) showTools(project.id);
-    });
-    wrap.addEventListener('pointercancel', () => {start = null;});
     return wrap;
   }
   function render() {
+    closeTools();
     list.replaceChildren();
-    openId = null;
     count.textContent = projects.length === 1 ? '1 prosjekt' : projects.length + ' prosjekter';
     if (!projects.length) {
       const empty = document.createElement('div');
@@ -269,7 +281,7 @@
     }
   });
   document.addEventListener('pointerdown', event => {
-    if (openId && !event.target.closest('.project-swipe')) showTools(openId);
+    if (openId && !event.target.closest('.project-swipe')) closeTools();
   });
   form.addEventListener('submit', event => {
     event.preventDefault();

@@ -32,14 +32,10 @@ const STORAGE_KEY='fiberapp.planner.projects.v1';
     <div class="notice error" *ngIf="error" role="alert">{{error}}</div>
     <div class="project-rows" *ngIf="projects.length; else emptyProjects">
       <div class="project-swipe" *ngFor="let item of sortedProjects; trackBy:trackId"
-           [class.open]="openProjectId===item.id"
-           (pointerdown)="onProjectPointerDown($event,item.id)"
-           (pointerup)="onProjectPointerUp($event,item.id)"
-           (pointercancel)="pointerStart=null">
+           [class.open]="openProjectId===item.id">
         <article class="panel project-row" role="button" tabindex="0"
                  [attr.aria-label]="'Åpne prosjekt: '+item.name"
-                 (pointerdown)="swipeConsumedId=null"
-                 (click)="onProjectClick(item)"
+                 (click)="openProject(item)"
                  (keydown.enter)="openProject(item)"
                  (keydown.space)="$event.preventDefault();openProject(item)">
           <div class="project-info">
@@ -57,7 +53,10 @@ const STORAGE_KEY='fiberapp.planner.projects.v1';
               <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-7.8 7.8a2.12 2.12 0 0 1-3-3l7.8-7.8a6 6 0 0 1 7.9-7.9z"/>
             </svg>
           </button>
-          <span class="project-door" aria-hidden="true"></span>
+          <button type="button" class="project-door" title="Vis prosjektinnstillinger"
+                  [attr.aria-label]="'Vis innstillinger for '+item.name"
+                  [attr.aria-expanded]="openProjectId===item.id"
+                  (click)="toggleProjectDoor(item.id,$event)"></button>
         </div>
       </div>
     </div>
@@ -136,13 +135,12 @@ export class PlannerComponent implements OnInit,OnDestroy {
   storageAvailable=true;
   openProjectId:string|null=null;
   activeProjectId:string|null=null;
-  swipeConsumedId:string|null=null;
+  private doorTimer:ReturnType<typeof setTimeout>|null=null;
   private routeSubscription?:Subscription;
   editingId:string|null=null;
   deleting=false;
   deleteConfirmation='';
   deleteError='';
-  pointerStart:{x:number;y:number;pointerId:number;projectId:string}|null=null;
   constructor(public readonly ui:PlannerUiService,private readonly router:Router,
               private readonly route:ActivatedRoute){} 
   get activeProject():Project|undefined{
@@ -162,7 +160,7 @@ export class PlannerComponent implements OnInit,OnDestroy {
   ngOnInit():void{
     this.routeSubscription=this.route.queryParamMap.subscribe(params=>{
       this.activeProjectId=params.get('project');
-      this.openProjectId=null;
+      this.closeProjectDoor();
       this.ui.projectOpen.set(Boolean(this.activeProject));
     });
     try{
@@ -182,38 +180,36 @@ export class PlannerComponent implements OnInit,OnDestroy {
     }
   }
   ngOnDestroy():void{
+    this.closeProjectDoor();
     this.routeSubscription?.unsubscribe();
     this.ui.projectOpen.set(false);
   }
-  onProjectClick(item:Project):void{
-    if(this.swipeConsumedId===item.id){
-      this.swipeConsumedId=null;
+  closeProjectDoor():void {
+    if(this.doorTimer!==null)clearTimeout(this.doorTimer);
+    this.doorTimer=null;
+    this.openProjectId=null;
+  }
+  toggleProjectDoor(id:string,event:MouseEvent):void {
+    event.stopPropagation();
+    if(this.openProjectId===id){
+      this.closeProjectDoor();
       return;
     }
-    this.openProject(item);
+    this.closeProjectDoor();
+    this.openProjectId=id;
+    if(window.matchMedia?.('(hover: none), (pointer: coarse), (max-width: 699px)').matches){
+      this.doorTimer=setTimeout(()=>this.closeProjectDoor(),3000);
+    }
+    // Avoid a stuck :focus-within state on touchscreens.
+    if(event.detail!==0)(event.currentTarget as HTMLElement|null)?.blur();
   }
   openProject(item:Project):void{
-    this.openProjectId=null;
+    this.closeProjectDoor();
     void this.router.navigate([],{relativeTo:this.route,
       queryParams:{project:item.id},queryParamsHandling:'merge'});
   }
-  onProjectPointerDown(event:PointerEvent,id:string):void{
-    this.swipeConsumedId=null;
-    if(event.pointerType==='mouse' || event.button!==0 ||
-      (event.target as Element).closest('.project-action-zone'))return;
-    this.pointerStart={x:event.clientX,y:event.clientY,pointerId:event.pointerId,projectId:id};
-  }
-  onProjectPointerUp(event:PointerEvent,id:string):void{
-    const start=this.pointerStart;
-    this.pointerStart=null;
-    if(!start || start.pointerId!==event.pointerId || start.projectId!==id)return;
-    const dx=event.clientX-start.x,dy=event.clientY-start.y;
-    if(Math.abs(dx)<35 || Math.abs(dx)<Math.abs(dy)*1.2)return;
-    this.swipeConsumedId=id;
-    if(dx<0)this.openProjectId=id;
-    else if(this.openProjectId===id)this.openProjectId=null;
-  }
   openSettings(item:Project):void{
+    this.closeProjectDoor();
     this.deleting=false;
     this.deleteConfirmation='';
     this.deleteError='';
