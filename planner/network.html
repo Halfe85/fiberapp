@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="no">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f4f7fb">
+  <title>Nettverkskart | Fiber Planner</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="./network.css?v=1">
+</head>
+<body>
+  <header class="network-header">
+    <a id="network-back" class="network-back" href="./">← Tilbake til prosjekt</a>
+    <div class="network-project-title">
+      <strong id="network-project-name">Nettverkskart</strong>
+      <small>Fiber Planner · Kart- og utstyrsplanlegging</small>
+    </div>
+    <button type="button" id="network-zoom-all" class="network-secondary">Vis hele prosjektet</button>
+  </header>
+  <main class="network-workspace">
+    <aside class="network-sidebar" aria-label="Planleggingsverktøy">
+      <div class="network-tabbar" role="tablist" aria-label="Planlegging">
+        <button type="button" class="is-active" role="tab" aria-selected="true" data-panel="devices">Utstyr</button>
+        <button type="button" role="tab" aria-selected="false" data-panel="routes">Traséer og kabler</button>
+        <button type="button" role="tab" aria-selected="false" data-panel="building">Rom og skap</button>
+      </div>
+      <p id="network-error" class="network-error" role="alert" hidden></p>
+      <section class="network-panel" id="network-panel-devices" aria-label="Utstyr">
+        <h2>Plasser utstyr</h2>
+        <label for="network-device-address">Adresse / plassering</label>
+        <select id="network-device-address"></select>
+        <label for="network-device-type">Utstyrstype</label>
+        <select id="network-device-type"></select>
+        <label for="network-device-name">Navn (valgfritt)</label>
+        <input id="network-device-name" type="text" maxlength="80" placeholder="F.eks. skjøteboks A">
+        <button id="network-place-device" type="button" class="network-primary">Plasser utstyr i kartet</button>
+        <p class="network-hint">Velg en adresse for å plassere inne i dens tegnede område, eller velg «Utendørs» for fri plassering.</p>
+        <h3>Plassert utstyr</h3>
+        <div id="network-device-list" class="network-object-list"></div>
+      </section>
+      <section class="network-panel" id="network-panel-routes" aria-label="Traséer og kabler" hidden>
+        <h2>Føringsvei</h2>
+        <label for="network-route-kind">Trasétype</label>
+        <select id="network-route-kind">
+          <option value="underground">Under bakken – rør</option>
+          <option value="aerial">Luftstrekk</option>
+        </select>
+        <label for="network-tube-type">Rørtype</label>
+        <input id="network-tube-type" type="text" value="Uspesifisert" maxlength="80" placeholder="Defineres senere">
+        <p class="network-hint">Rørtypen er foreløpig åpen. En kabel kan legges i valgt trasé og følger dens lagrede rute.</p>
+        <button id="network-draw-route" type="button" class="network-primary">Tegn trasé i kartet</button>
+        <div class="network-drawing-controls" id="network-drawing-controls" hidden>
+          <p id="network-point-count">0 punkter</p>
+          <div class="network-button-row">
+            <button type="button" id="network-undo-point" class="network-secondary">Angre punkt</button>
+            <button type="button" id="network-finish-route" class="network-primary">Fullfør trasé</button>
+            <button type="button" id="network-cancel-route" class="network-secondary">Avbryt</button>
+          </div>
+        </div>
+        <h3>Legg kabel i valgt trasé</h3>
+        <p id="network-selected-route" class="network-selected-info">Velg en trasé i kartet eller listen.</p>
+        <label for="network-cable-fibers">Fiberantall</label>
+        <select id="network-cable-fibers"></select>
+        <button id="network-add-cable" type="button" class="network-primary" disabled>Legg kabel i traséen</button>
+        <h3>Traséer og kabler</h3>
+        <div id="network-route-list" class="network-object-list"></div>
+      </section>
+      <section class="network-panel" id="network-panel-building" aria-label="Rom og rack" hidden>
+        <h2>Rom og fordelere</h2>
+        <label for="network-room-address">Bygg/adresse</label>
+        <select id="network-room-address"></select>
+        <label for="network-room-name">Romnavn</label>
+        <input id="network-room-name" type="text" maxlength="80" placeholder="F.eks. teknisk rom">
+        <button id="network-place-room" type="button" class="network-primary">Plasser rom/fordeler i kartet</button>
+        <p class="network-hint">For FTTH-SDU markeres fordeleren som ett punkt i bygget. Kabelføring inne i bygget tegnes ikke i kartet.</p>
+        <h3>Rack eller skap i rom</h3>
+        <label for="network-rack-room">Rom</label>
+        <select id="network-rack-room"></select>
+        <label for="network-rack-kind">Type</label>
+        <select id="network-rack-kind">
+          <option value="rack">Rack</option>
+          <option value="cabinet">Skap</option>
+        </select>
+        <label for="network-rack-name">Navn</label>
+        <input id="network-rack-name" type="text" maxlength="80" placeholder="F.eks. hovedrack">
+        <button id="network-add-rack" type="button" class="network-secondary">Opprett rack/skap</button>
+        <h3>Paneler i rack/skap</h3>
+        <label for="network-module-rack">Rack/skap</label>
+        <select id="network-module-rack"></select>
+        <label for="network-module-type">Panel eller enhet</label>
+        <select id="network-module-type"></select>
+        <button id="network-add-module" type="button" class="network-secondary">Legg panel i rack/skap</button>
+        <h3>Bygg og innhold</h3>
+        <div id="network-building-list" class="network-object-list"></div>
+      </section>
+    </aside>
+    <section class="network-map-area" aria-label="Stort tegnekart">
+      <div id="network-map" role="region" aria-label="Kart over prosjektets adresser, utstyr og føringsveier"></div>
+      <p id="network-map-status" class="network-map-status" role="status" aria-live="polite">
+        Velg et verktøy til venstre, eller trykk på en tomt for å knytte utstyr til adressen.
+      </p>
+    </section>
+  </main>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+  <script src="./network-editor.js?v=1" defer></script>
+</body>
+</html>

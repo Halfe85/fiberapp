@@ -1,0 +1,58 @@
+*{box-sizing:border-box}
+:root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#f4f7fb;color:#182f44}
+body{margin:0}button,input,select{font:inherit}button{cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid #5caced;outline-offset:2px}
+[hidden]{display:none!important}
+.network-header{display:flex;align-items:center;gap:16px;min-height:72px;padding:10px clamp(12px,2vw,24px);background:#fff;border-bottom:1px solid #d6e2ec}
+.network-back{color:#2469a1;font-size:14px;font-weight:700;text-decoration:none;white-space:nowrap}
+.network-project-title{display:flex;min-width:0;flex:1;flex-direction:column;gap:2px}
+.network-project-title strong{font-size:18px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.network-project-title small{font-size:12px;color:#607a90}
+.network-workspace{display:grid;grid-template-columns:minmax(305px,360px) minmax(0,1fr);height:calc(100dvh - 72px);min-height:470px}
+.network-sidebar{padding:0 16px 24px;background:#fff;min-height:0;overflow-y:auto;border-right:1px solid #d6e2ec}
+.network-tabbar{display:grid;grid-template-columns:1fr 1.3fr 1fr;position:sticky;z-index:500;top:0;gap:4px;background:#fff;padding:14px 0 12px}
+.network-tabbar button{border:1px solid #d4e3ee;background:#f2f6fa;color:#3e586f;border-radius:9px;padding:10px 5px;font-size:12px;font-weight:700;min-height:42px}
+.network-tabbar button.is-active{background:#246da4;color:#fff;border-color:#246da4}
+.network-panel{display:flex;flex-direction:column;gap:10px}
+.network-panel h2{font-size:20px;margin:5px 0 0}
+.network-panel h3{font-size:15px;margin:14px 0 0;border-top:1px solid #e4ebf0;padding-top:12px}
+.network-panel label{font-size:13px;font-weight:700;color:#3e566e;margin-top:2px}
+.network-panel input,.network-panel select{width:100%;min-width:0;border:1px solid #bacddd;border-radius:9px;padding:11px;color:#1e364c;background:#fff;min-height:43px}
+.network-primary,.network-secondary{border:0;padding:10px 14px;min-height:43px;border-radius:9px;font-weight:750}
+.network-primary{background:#206da7;color:#fff}
+.network-secondary{background:#e8f1f8;color:#225b84}
+.network-primary:disabled,.network-secondary:disabled{opacity:.45;cursor:not-allowed}
+.network-button-row{display:flex;gap:7px;flex-wrap:wrap}
+.network-button-row button{flex:1}
+.network-hint{font-size:12px;color:#627b90;line-height:1.5;margin:0}
+.network-error{color:#9a2020;background:#fff2f2;border:1px solid #ebc8c8;padding:12px;border-radius:10px}
+.network-selected-info{background:#ecf5fb;border-radius:8px;color:#255c80;font-size:13px;padding:11px;margin:0}
+.network-drawing-controls{background:#f4f9fd;border:1px solid #cde0ef;border-radius:10px;padding:10px}
+.network-drawing-controls p{margin:0 0 9px;font-size:13px;color:#3d657d}
+.network-object-list{display:flex;flex-direction:column;gap:6px}
+.network-object-row{border:1px solid #dce6ee;background:#fafcff;border-radius:9px;padding:8px;display:flex;align-items:center;gap:6px;min-width:0}
+.network-object-row.is-selected{background:#e5f3fc;border-color:#6eabd2}
+.network-object-row button[data-action=select]{flex:1;min-width:0;border:0;text-align:left;background:transparent;color:#1f4964;padding:5px 4px;font-size:13px}
+.network-object-row button[data-action=remove]{border:0;border-radius:7px;color:#a22e2e;background:#ffefef;min-width:32px;min-height:33px;font-size:18px}
+.network-object-row .network-object-label{display:block;font-weight:700;overflow-wrap:anywhere}
+.network-object-row .network-object-detail{display:block;font-size:11px;color:#6a8093;margin-top:3px;overflow-wrap:anywhere}
+.network-empty{font-size:12px;color:#758ba0;padding:10px 2px}
+.network-map-area{position:relative;min-width:0;min-height:0;background:#dde8ef}
+#network-map{height:100%;width:100%;min-height:470px}
+.network-map-status{position:absolute;z-index:450;bottom:14px;left:16px;right:16px;pointer-events:none;
+  margin:0;max-width:900px;padding:10px 13px;background:rgba(255,255,255,.94);border:1px solid #d4e2ed;border-radius:10px;color:#2e5876;font-size:13px;box-shadow:0 5px 18px #1c406020}
+.network-map-area.is-placing #network-map{cursor:crosshair}
+.network-map-area .leaflet-container{background:#dce8ef}
+@media(max-width:850px){
+ .network-header{min-height:64px;flex-wrap:wrap}
+ .network-header .network-project-title small{display:none}
+ .network-header button{font-size:12px;padding:8px}
+ .network-workspace{display:flex;flex-direction:column;height:auto;min-height:0}
+ .network-sidebar{max-height:none;overflow:visible;padding:0 12px 16px;border-right:0}
+ .network-tabbar{top:0}
+ .network-panel{max-width:none}
+ .network-map-area{height:62dvh;min-height:420px}
+ #network-map{min-height:420px}
+ .network-map-status{font-size:12px;bottom:8px;left:8px;right:8px}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
