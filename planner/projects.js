@@ -14,6 +14,7 @@
   const workspace = document.getElementById('project-workspace');
   const workspaceTitle = document.getElementById('workspace-title');
   const workspaceDescription = document.getElementById('workspace-description');
+  const networkEditorLink = document.getElementById('network-editor-link');
   const backButton = document.getElementById('project-back');
   const plannerHeader = document.querySelector('.planner-header');
   const itemActions = document.getElementById('project-actions');
@@ -117,6 +118,8 @@
     document.title = selected ? selected.name + ' | Fiber Planner' : 'Fiber Planner | Fiberapp';
     if (!selected) return;
     workspaceTitle.textContent = selected.name;
+    if(networkEditorLink)
+      networkEditorLink.href='./network.html?project='+encodeURIComponent(selected.id);
     workspaceDescription.textContent = selected.description || '';
     workspaceDescription.hidden = !selected.description;
   }

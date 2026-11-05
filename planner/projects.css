@@ -563,3 +563,15 @@
   .project-swipe.open .project-door{transform:translateX(-100%)}
   .project-swipe.open .project-tool{pointer-events:auto}
 }
+
+/* The map editor lives on its own full-size planning page. */
+.project-map-lower.network-editor-entry{display:flex;flex-direction:column;gap:9px;
+  align-items:stretch;justify-content:flex-start;padding:16px;min-width:0}
+.network-editor-entry h3{margin:0;font-size:17px;color:#193951}
+.network-editor-entry p{margin:0;font-size:13px;color:#5d778c;line-height:1.5}
+.network-editor-entry .network-editor-link{display:inline-flex;align-items:center;
+  justify-content:center;min-height:44px;padding:10px 14px;align-self:flex-start;
+  border-radius:9px;background:#216da7;color:#fff;font-size:13px;font-weight:750;
+  text-decoration:none}
+.network-editor-entry .network-editor-link:hover,
+.network-editor-entry .network-editor-link:focus-visible{background:#155685}

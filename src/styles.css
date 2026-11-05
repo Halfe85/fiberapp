@@ -918,3 +918,18 @@ app-planner .project-action-zone .project-door{
   app-planner .project-swipe.open .project-door{transform:translateX(-100%)}
   app-planner .project-swipe.open .project-tool{pointer-events:auto}
 }
+
+/* Shared full-size network planner entry point. */
+app-planner .project-map-lower.network-editor-entry{
+  display:flex;flex-direction:column;gap:9px;align-items:stretch;
+  justify-content:flex-start;padding:16px;min-width:0
+}
+app-planner .network-editor-entry h3{margin:0;font-size:17px;color:#193951}
+app-planner .network-editor-entry p{margin:0;font-size:13px;color:#5d778c;line-height:1.5}
+app-planner .network-editor-entry .network-editor-link{
+  display:inline-flex;align-items:center;justify-content:center;
+  align-self:flex-start;min-height:44px;padding:10px 14px;border-radius:9px;
+  background:#216da7;color:#fff;font-size:13px;font-weight:750;text-decoration:none
+}
+app-planner .network-editor-entry .network-editor-link:hover,
+app-planner .network-editor-entry .network-editor-link:focus-visible{background:#155685}

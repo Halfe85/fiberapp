@@ -78,7 +78,13 @@ const STORAGE_KEY='fiberapp.planner.projects.v1';
       </div>
       <div class="project-map-column">
         <app-project-map [projectId]="current.id" [postcode]="current.postcode || ''"></app-project-map>
-        <div class="project-map-lower" aria-hidden="true"></div>
+        <div class="project-map-lower network-editor-entry">
+          <h3>Nettverkskart</h3>
+          <p>Plasser utstyr, tegn luft- og rørtraséer, og planlegg rom, skap og paneler.</p>
+          <a class="network-editor-link" [href]="networkEditorUrl(current.id)">
+            Åpne stort kart
+          </a>
+        </div>
       </div>
     </div>
   </section>
@@ -153,6 +159,10 @@ export class PlannerComponent implements OnInit,OnDestroy {
     return this.projects.find(p=>p.id===this.editingId)?.name||'';
   }
   trackId(_index:number,item:Project):string{return item.id;}
+  networkEditorUrl(id:string):string{
+    // Shared frontend-only standalone editor, same origin and localStorage.
+    return new URL('planner/network.html?project='+encodeURIComponent(id),document.baseURI).href;
+  }
   formatDate(value:string):string{
     const date=new Date(value);
     return Number.isFinite(date.valueOf())?date.toLocaleDateString('nb-NO'):'';
