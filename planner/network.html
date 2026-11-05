@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f4f7fb">
   <title>Nettverkskart | Fiber Planner</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="./network.css?v=1">
+  <link rel="stylesheet" href="./network.css?v=2">
 </head>
 <body>
   <header class="network-header">
@@ -22,7 +22,6 @@
       <div class="network-tabbar" role="tablist" aria-label="Planlegging">
         <button type="button" class="is-active" role="tab" aria-selected="true" data-panel="devices">Utstyr</button>
         <button type="button" role="tab" aria-selected="false" data-panel="routes">Traséer og kabler</button>
-        <button type="button" role="tab" aria-selected="false" data-panel="building">Rom og skap</button>
       </div>
       <p id="network-error" class="network-error" role="alert" hidden></p>
       <section class="network-panel" id="network-panel-devices" aria-label="Utstyr">
@@ -34,7 +33,7 @@
         <label for="network-device-name">Navn (valgfritt)</label>
         <input id="network-device-name" type="text" maxlength="80" placeholder="F.eks. skjøteboks A">
         <button id="network-place-device" type="button" class="network-primary">Plasser utstyr i kartet</button>
-        <p class="network-hint">Velg en adresse for å plassere inne i dens tegnede område, eller velg «Utendørs» for fri plassering.</p>
+        <p class="network-hint">Velg en prosjektadresse for å knytte utstyr til adressen, eller velg Utendørs. Ingen tegning av bygg/tomt kreves.</p>
         <h3>Plassert utstyr</h3>
         <div id="network-device-list" class="network-object-list"></div>
       </section>
@@ -65,43 +64,15 @@
         <h3>Traséer og kabler</h3>
         <div id="network-route-list" class="network-object-list"></div>
       </section>
-      <section class="network-panel" id="network-panel-building" aria-label="Rom og rack" hidden>
-        <h2>Rom og fordelere</h2>
-        <label for="network-room-address">Bygg/adresse</label>
-        <select id="network-room-address"></select>
-        <label for="network-room-name">Romnavn</label>
-        <input id="network-room-name" type="text" maxlength="80" placeholder="F.eks. teknisk rom">
-        <button id="network-place-room" type="button" class="network-primary">Plasser rom/fordeler i kartet</button>
-        <p class="network-hint">For FTTH-SDU markeres fordeleren som ett punkt i bygget. Kabelføring inne i bygget tegnes ikke i kartet.</p>
-        <h3>Rack eller skap i rom</h3>
-        <label for="network-rack-room">Rom</label>
-        <select id="network-rack-room"></select>
-        <label for="network-rack-kind">Type</label>
-        <select id="network-rack-kind">
-          <option value="rack">Rack</option>
-          <option value="cabinet">Skap</option>
-        </select>
-        <label for="network-rack-name">Navn</label>
-        <input id="network-rack-name" type="text" maxlength="80" placeholder="F.eks. hovedrack">
-        <button id="network-add-rack" type="button" class="network-secondary">Opprett rack/skap</button>
-        <h3>Paneler i rack/skap</h3>
-        <label for="network-module-rack">Rack/skap</label>
-        <select id="network-module-rack"></select>
-        <label for="network-module-type">Panel eller enhet</label>
-        <select id="network-module-type"></select>
-        <button id="network-add-module" type="button" class="network-secondary">Legg panel i rack/skap</button>
-        <h3>Bygg og innhold</h3>
-        <div id="network-building-list" class="network-object-list"></div>
-      </section>
     </aside>
     <section class="network-map-area" aria-label="Stort tegnekart">
       <div id="network-map" role="region" aria-label="Kart over prosjektets adresser, utstyr og føringsveier"></div>
       <p id="network-map-status" class="network-map-status" role="status" aria-live="polite">
-        Velg et verktøy til venstre, eller trykk på en tomt for å knytte utstyr til adressen.
+        Velg verktøy for utendørs utstyr eller traséer. Leilighetene planlegges i 2D-byggvisningen.
       </p>
     </section>
   </main>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
-  <script src="./network-editor.js?v=1" defer></script>
+  <script src="./network-editor.js?v=2" defer></script>
 </body>
 </html>

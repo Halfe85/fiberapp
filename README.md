@@ -69,3 +69,25 @@ project workspace. On GitHub Pages, the standalone URL is
   standalone editor; this avoids diverging drawing logic during the frontend
   prototype phase. The standalone page is published on GitHub Pages. The
   Angular dev server may need static asset copying to serve it locally.
+
+
+## Address-first SDU workflow
+
+The new frontend is available on GitHub Pages:
+
+- `planner/add-address.html?project=<project-id>` — text search and clickable
+  Kartverket background map (nearby addresses are suggestions, not detected
+  building outlines), selectable official bruksenhetsnummer from Adresse REST API.
+- `planner/building.html?project=<project-id>&address=<address-id>` — a
+  **logical**, automatically generated side elevation. Every selected H/K/U/L
+  bruksenhetsnummer gets one selectable rectangle on its etasje.
+- Select one/many units to bulk-plan cable (G2–G576), connector (SC/LC APC/UPC)
+  and subscriber equipment (ONT/CPE/OTB). The metadata is stored in
+  `fiberapp.planner.items.v1[*].unitConnections`; no interior fiber routes are
+  rendered, no ODF port/splice matrix is inferred.
+- The large geographical network map keeps outdoor equipment, aerial routes,
+  underground conduit paths and cables referencing route IDs. Rooms, racks and
+  cabinets are removed from its current UI. Older hidden data is **not erased**.
+- No backend, no authentication, and no server synchronization. Full live browser
+  and Angular build validation still needed. The Angular app links into the same
+  standalone address and building tools rather than duplicating the drawing logic.

@@ -22,37 +22,15 @@
     ['otb','OTB'],
     ['distributor','Fordeler / fordelingspunkt']
   ];
-  const panels=[
-    {id:'gpon-1-2',label:'GPON splitter 1:2',kind:'gpon',ratio:2},
-    {id:'gpon-1-4',label:'GPON splitter 1:4',kind:'gpon',ratio:4},
-    {id:'gpon-1-16',label:'GPON splitter 1:16',kind:'gpon',ratio:16},
-    {id:'gpon-1-32',label:'GPON splitter 1:32',kind:'gpon',ratio:32},
-    {id:'gpon-1-64',label:'GPON splitter 1:64',kind:'gpon',ratio:64},
-    {id:'switch-24',label:'Switch 24 porter + 4 uplink',kind:'switch',ports:24,uplinks:4},
-    {id:'switch-48',label:'Switch 48 porter + 4 uplink',kind:'switch',ports:48,uplinks:4}
-  ];
-  for(const height of [1,1.5]){
-    for(const fiber of ['SC','LC']){
-      for(const finish of ['APC','UPC']){
-        const ports=fiber==='SC'?48:96;
-        const geometry=fiber==='SC'?'24 duplex':'24 quadplex';
-        panels.push({
-          id:'odf-'+String(height).replace('.','_')+'u-'+fiber.toLowerCase()+'-'+finish.toLowerCase(),
-          label:'ODF '+height+'U · '+geometry+' '+fiber+'/'+finish+' ('+ports+' porter)',
-          kind:'odf',heightU:height,connector:fiber+'/'+finish,ports
-        });
-      }
-    }
-  }
   const fibers=[2,4,12,24,48,96,144,192,288,576];
   const empty=()=>({devices:[],rooms:[],racks:[],modules:[],routes:[],cables:[]});
   const areas=readArray(ITEMS).filter(item=>item &&
     item.projectId===projectId && item.kind==='address' &&
-    Boolean((item.area||item.parcel)?.geometry?.coordinates));
+    Number.isFinite(item.latitude)&&Number.isFinite(item.longitude));
   const project=readArray(PROJECTS).find(item=>item && item.id===projectId);
   let model=empty();
   let map=null;
-  let addressLayer=null,devicesLayer=null,roomsLayer=null,routesLayer=null,preview=null;
+  let addressLayer=null,devicesLayer=null,routesLayer=null,preview=null;
   let mode='browse',tab='devices',points=[],selectedAddressId='',selectedRouteId='';
   let drawingKind='underground',drawingTube='Uspesifisert';
   let counter=0;
@@ -145,7 +123,6 @@
   function setSelectedAddress(id){
     selectedAddressId=id;
     el('network-device-address').value=id;
-    el('network-room-address').value=id;
     renderMap();
   }
   function setMode(next,message){
@@ -166,7 +143,6 @@
         coords.push([item.latitude,item.longitude]);
     }
     for(const device of model.devices)coords.push([device.latitude,device.longitude]);
-    for(const room of model.rooms)coords.push([room.latitude,room.longitude]);
     for(const route of model.routes)for(const pt of route.points)coords.push(pt);
     if(!coords.length)map.setView([63,11],5);
     else if(coords.length===1)map.setView(coords[0],18);
@@ -174,10 +150,20 @@
   }
   function renderMap(){
     if(!map)return;
-    addressLayer.clearLayers();devicesLayer.clearLayers();roomsLayer.clearLayers();routesLayer.clearLayers();
+    addressLayer.clearLayers();devicesLayer.clearLayers();routesLayer.clearLayers();
     for(const item of areas){
       const geo=addressGeometry(item);
-      if(!geo || !['Polygon','MultiPolygon'].includes(geo.type))continue;
+      if(!geo || !['Polygon','MultiPolygon'].includes(geo.type)){
+        // A small reference point on this specialist map is enough for new
+        // addresses; drawing an outline is not required.
+        L.circleMarker([item.latitude,item.longitude],{
+          radius:5,color:'#fff',weight:2,fillColor:'#2788ab',fillOpacity:.8
+        }).bindTooltip(item.name).on('click',event=>{
+          L.DomEvent.stopPropagation(event);
+          if(mode==='browse')setSelectedAddress(item.id);
+        }).addTo(addressLayer);
+        continue;
+      }
       try{
         const selected=selectedAddressId===item.id;
         const layer=L.geoJSON({type:'Feature',geometry:geo,properties:{}},{
@@ -218,12 +204,6 @@
       marker.on('click',e=>{L.DomEvent.stopPropagation(e);feedback('Utstyr: '+device.name)});
       marker.addTo(devicesLayer);
     }
-    for(const room of model.rooms){
-      if(!Number.isFinite(room.latitude)||!Number.isFinite(room.longitude))continue;
-      L.circleMarker([room.latitude,room.longitude],{
-        radius:9,color:'#fff',weight:2,fillColor:'#2172a3',fillOpacity:1
-      }).bindTooltip('Rom/fordeler: '+room.name).addTo(roomsLayer);
-    }
   }
   function storeRecord(key,row){
     const next=normalizeProject(model);
@@ -240,8 +220,8 @@
     }
     if(mode==='device'){
       const requested=el('network-device-address').value;
-      if(requested && !pointInside(addressById(requested),lat,lng)){
-        feedback('Velg et punkt innenfor den merkede tomten/bygget for denne adressen.');
+      if(requested && !addressById(requested)){
+        feedback('Velg en registrert adresse, eller Utendørs.');
         return;
       }
       const catalog=deviceTypes.find(x=>x[0]===el('network-device-type').value);
@@ -250,18 +230,6 @@
       if(storeRecord('devices',{id:uid('dev'),projectId,kind:catalog[0],name,
         addressId:requested||null,latitude:lat,longitude:lng})){
         finishMode();feedback('Utstyr plassert: '+name);
-      }
-    }else if(mode==='room'){
-      const addr=addressById(el('network-room-address').value);
-      if(!addr || !pointInside(addr,lat,lng)){
-        feedback('Velg rommets fordelingspunkt innenfor valgt bygg/tomt.');
-        return;
-      }
-      const name=el('network-room-name').value.trim()||'Teknisk rom';
-      const room={id:uid('room'),projectId,addressId:addr.id,name,latitude:lat,longitude:lng};
-      if(storeRecord('rooms',room)){
-        el('network-rack-room').value=room.id;
-        finishMode();feedback('Rom/fordeler plassert: '+name);
       }
     }else{
       const found=addressForPoint(lat,lng);
@@ -295,29 +263,6 @@
       feedback(fiberCount+'F-kabel lagt i traséen. Kabelens geometri følger traséen.');
     }
   }
-  function createRack(){
-    const roomId=el('network-rack-room').value;
-    if(!model.rooms.some(x=>x.id===roomId)){feedback('Opprett og velg et rom først.');return}
-    const kind=el('network-rack-kind').value;
-    const name=el('network-rack-name').value.trim()||(kind==='cabinet'?'Skap':'Rack');
-    const rack={id:uid('rack'),projectId,roomId,kind,name};
-    if(storeRecord('racks',rack)){
-      el('network-module-rack').value=rack.id;
-      feedback('Rack/skap lagt i rommet.');
-    }
-  }
-  function addModule(){
-    const rackId=el('network-module-rack').value;
-    if(!model.racks.some(x=>x.id===rackId)){feedback('Velg et rack/skap først.');return}
-    const selected=panels.find(x=>x.id===el('network-module-type').value);
-    if(!selected)return;
-    if(storeRecord('modules',{id:uid('mod'),projectId,rackId,type:selected.id,
-      label:selected.label,kind:selected.kind,ports:selected.ports||null,
-      uplinks:selected.uplinks||null,splitRatio:selected.ratio||null,
-      heightU:selected.heightU||null,connector:selected.connector||null})){
-      feedback(selected.label+' lagt til i racket/skapet.');
-    }
-  }
   function removeObject(collection,id){
     const parent=model[collection].find(x=>x.id===id);
     if(!parent)return;
@@ -325,12 +270,6 @@
     if(!window.confirm('Slette '+(parent.name||parent.label||parent.kind||'objekt')+' fra nettverksplanen?'))return;
     next[collection]=next[collection].filter(x=>x.id!==id);
     if(collection==='routes')next.cables=next.cables.filter(x=>x.routeId!==id);
-    if(collection==='rooms'){
-      const racksToRemove=new Set(next.racks.filter(x=>x.roomId===id).map(x=>x.id));
-      next.racks=next.racks.filter(x=>!racksToRemove.has(x.id));
-      next.modules=next.modules.filter(x=>!racksToRemove.has(x.rackId));
-    }
-    if(collection==='racks')next.modules=next.modules.filter(x=>x.rackId!==id);
     if(collection==='routes'&&selectedRouteId===id)selectedRouteId='';
     if(writeProject(next))feedback('Objekt slettet fra nettverksplanen.');
   }
@@ -348,8 +287,7 @@
   }
   function renderObjects(){
     const deviceList=el('network-device-list'),routeList=el('network-route-list');
-    const buildingList=el('network-building-list');
-    deviceList.replaceChildren();routeList.replaceChildren();buildingList.replaceChildren();
+    deviceList.replaceChildren();routeList.replaceChildren();
     for(const device of model.devices){
       const name=addressById(device.addressId)?.name||'Utendørs';
       objectRow(deviceList,device.name,name,false,()=>{
@@ -368,26 +306,9 @@
       },()=>removeObject('routes',route.id));
     }
     if(!model.routes.length)routeList.textContent='Ingen føringsveier.';
-    for(const room of model.rooms){
-      objectRow(buildingList,room.name,'Rom/fordeler · '+(addressById(room.addressId)?.name||'Ukjent adresse'),false,
-        ()=>map.setView([room.latitude,room.longitude],19),()=>removeObject('rooms',room.id));
-      for(const rack of model.racks.filter(x=>x.roomId===room.id)){
-        objectRow(buildingList,'↳ '+rack.name,(rack.kind==='cabinet'?'Skap':'Rack')+' · '+model.modules.filter(x=>x.rackId===rack.id).length+' paneler',false,
-          ()=>feedback('Valgt '+rack.name),()=>removeObject('racks',rack.id));
-        for(const module of model.modules.filter(x=>x.rackId===rack.id)){
-          objectRow(buildingList,'  · '+module.label, 'Panel i '+rack.name,false,
-            ()=>feedback(module.label),()=>removeObject('modules',module.id));
-        }
-      }
-    }
-    if(!model.rooms.length)buildingList.textContent='Ingen rom/fordelere.';
   }
   function render(){
     if(!map)return;
-    const roomSelect=el('network-rack-room'),rackSelect=el('network-module-rack');
-    const oldRoom=roomSelect.value,oldRack=rackSelect.value;
-    refreshSelect(roomSelect,model.rooms.map(x=>[x.id,x.name]),'Velg rom',oldRoom);
-    refreshSelect(rackSelect,model.racks.map(x=>[x.id,x.name]),'Velg rack/skap',oldRack);
     if(!model.routes.some(x=>x.id===selectedRouteId))selectedRouteId='';
     const selected=model.routes.find(x=>x.id===selectedRouteId);
     el('network-selected-route').textContent=selected
@@ -415,10 +336,7 @@
     el('network-back').href='./?project='+encodeURIComponent(projectId);
     refreshSelect(el('network-device-address'),
       areas.map(a=>[a.id,a.name]),'Utendørs / utenfor bygg','');
-    refreshSelect(el('network-room-address'),
-      areas.map(a=>[a.id,a.name]),'Velg bygg/adresse','');
     for(const [value,label] of deviceTypes)option(el('network-device-type'),value,label);
-    for(const panel of panels)option(el('network-module-type'),panel.id,panel.label);
     for(const n of fibers)option(el('network-cable-fibers'),String(n),n+' fibre');
     map=L.map('network-map',{zoomControl:true});
     L.tileLayer(TILE,{
@@ -428,7 +346,6 @@
     addressLayer=L.layerGroup().addTo(map);
     routesLayer=L.layerGroup().addTo(map);
     devicesLayer=L.layerGroup().addTo(map);
-    roomsLayer=L.layerGroup().addTo(map);
     map.setView([63,11],5);
     map.on('click',onMapClick);
     render();
@@ -440,22 +357,15 @@
         b.classList.toggle('is-active',b===button);
         b.setAttribute('aria-selected',String(b===button));
       });
-      for(const type of ['devices','routes','building'])
+      for(const type of ['devices','routes'])
         el('network-panel-'+type).hidden=type!==tab;
       map.invalidateSize();
     }));
     el('network-device-address').addEventListener('change',e=>setSelectedAddress(e.target.value));
-    el('network-room-address').addEventListener('change',e=>setSelectedAddress(e.target.value));
     el('network-place-device').addEventListener('click',()=>{
       const id=el('network-device-address').value;
       if(id && !addressById(id)){feedback('Velg en registrert adresse.');return}
-      setMode('device','Trykk på kartet for å plassere utstyret'+(id?' innenfor valgt bygg/tomt.':'.'));
-    });
-    el('network-place-room').addEventListener('click',()=>{
-      if(!addressById(el('network-room-address').value)){
-        feedback('Velg et bygg/adresse først.');return;
-      }
-      setMode('room','Trykk innenfor valgt bygg/tomt for å plassere rommets fordelingspunkt.');
+      setMode('device','Trykk på kartet for å plassere utstyret'+(id?' og knytte det til valgt adresse.':'.'));
     });
     el('network-draw-route').addEventListener('click',startRoute);
     el('network-undo-point').addEventListener('click',()=>{
@@ -468,12 +378,10 @@
       finishMode();feedback('Tegningen er avbrutt.');
     });
     el('network-add-cable').addEventListener('click',addCable);
-    el('network-add-rack').addEventListener('click',createRack);
-    el('network-add-module').addEventListener('click',addModule);
     document.addEventListener('keydown',e=>{
       if(e.key==='Escape'&&mode!=='browse'){finishMode();feedback('Verktøy avbrutt.')}
     });
-    feedback('Velg en adresseflate eller et verktøy for å starte planleggingen.');
+    feedback('Velg utstyr eller tegn en trasé. Byggvisning og leilighetstilkoblinger åpnes fra adresselisten.');
   }
   setup();
 })();
