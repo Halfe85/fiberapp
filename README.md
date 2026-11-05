@@ -41,3 +41,31 @@ There are no `.github/workflows` in any branch. `index.html` currently contains 
 - Future SAH pool integration will allow only one Worker-owned active database connection.
 - Angular + SQLite running in a production browser have **not been verified** here because the npm registry could not be reached in the build environment.
 - Current link model assigns a single connection per port and is **not** a complete fiber path/splice/ODF front-to-back model.
+
+
+## Network planning frontend (experimental)
+
+Open a local project in Fiber Planner, then choose **Åpne stort kart** in the
+project workspace. On GitHub Pages, the standalone URL is
+`/fiberapp/planner/network.html?project=<project-id>`.
+
+- This map lets you place distribution points, OTB/CommScope-style splice boxes
+  and other devices inside a registered building/parcel polygon or outdoors.
+- Building rooms are recorded as a single distribution-point marker for the
+  FTTH-SDU design workflow. No interior cable paths are drawn.
+- Racks/cabinets are linked to rooms; GPON splitters, switches and ODF panel
+  variants are linked to racks/cabinets. Physical rack-height validation and
+  detailed patch/splice topology are **not** implemented.
+- Aerial and underground routes are user-drawn polylines. Underground tube
+  types are placeholders until the tube catalog is defined.
+- Cables reference a route ID rather than storing their own geometry. They
+  therefore inherit the route path by design. Editing existing routes and
+  physical conduit capacity validation are not yet implemented.
+- The editor uses local browser storage `fiberapp.planner.network.v1`,
+  scoped by project ID. No backend, collaboration, server sync or persistent
+  authentication is provided. The existing address polygons and project
+  metadata are read from the Planner's existing storage keys.
+- Both the static project page and the Angular workspace link to the same
+  standalone editor; this avoids diverging drawing logic during the frontend
+  prototype phase. The standalone page is published on GitHub Pages. The
+  Angular dev server may need static asset copying to serve it locally.

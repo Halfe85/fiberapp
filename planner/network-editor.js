@@ -7,6 +7,7 @@
   const ITEMS=PREFIX+'items.v1';
   const PROJECTS=PREFIX+'projects.v1';
   const TILE='https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png';
+  const L=window.L;
   const params=new URL(location.href).searchParams;
   const projectId=params.get('project')||'';
   const el=id=>document.getElementById(id);
@@ -45,9 +46,9 @@
   }
   const fibers=[2,4,12,24,48,96,144,192,288,576];
   const empty=()=>({devices:[],rooms:[],racks:[],modules:[],routes:[],cables:[]});
-  const areas=readArray(ITEMS).filter(item=>item && item.projectId===projectId &&
-    item.kind==='address' && item.area?.geometry?.coordinates || item && item.projectId===projectId &&
-    item.kind==='address' && item.parcel?.geometry?.coordinates);
+  const areas=readArray(ITEMS).filter(item=>item &&
+    item.projectId===projectId && item.kind==='address' &&
+    Boolean((item.area||item.parcel)?.geometry?.coordinates));
   const project=readArray(PROJECTS).find(item=>item && item.id===projectId);
   let model=empty();
   let map=null;
@@ -149,7 +150,7 @@
   }
   function setMode(next,message){
     mode=next;
-    el('network-map-area')?.classList.toggle('is-placing',next!=='browse');
+    document.querySelector('.network-map-area')?.classList.toggle('is-placing',next!=='browse');
     feedback(message);
   }
   function finishMode(){
@@ -257,8 +258,9 @@
         return;
       }
       const name=el('network-room-name').value.trim()||'Teknisk rom';
-      if(storeRecord('rooms',{id:uid('room'),projectId,addressId:addr.id,name,
-        latitude:lat,longitude:lng})){
+      const room={id:uid('room'),projectId,addressId:addr.id,name,latitude:lat,longitude:lng};
+      if(storeRecord('rooms',room)){
+        el('network-rack-room').value=room.id;
         finishMode();feedback('Rom/fordeler plassert: '+name);
       }
     }else{
@@ -298,7 +300,9 @@
     if(!model.rooms.some(x=>x.id===roomId)){feedback('Opprett og velg et rom først.');return}
     const kind=el('network-rack-kind').value;
     const name=el('network-rack-name').value.trim()||(kind==='cabinet'?'Skap':'Rack');
-    if(storeRecord('racks',{id:uid('rack'),projectId,roomId,kind,name})){
+    const rack={id:uid('rack'),projectId,roomId,kind,name};
+    if(storeRecord('racks',rack)){
+      el('network-module-rack').value=rack.id;
       feedback('Rack/skap lagt i rommet.');
     }
   }
