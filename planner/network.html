@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f4f7fb">
   <title>Nettverkskart | Fiber Planner</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="./network.css?v=2">
+  <link rel="stylesheet" href="./network.css?v=3">
 </head>
 <body>
   <header class="network-header">
@@ -22,6 +22,7 @@
       <div class="network-tabbar" role="tablist" aria-label="Planlegging">
         <button type="button" class="is-active" role="tab" aria-selected="true" data-panel="devices">Utstyr</button>
         <button type="button" role="tab" aria-selected="false" data-panel="routes">Traséer og kabler</button>
+        <button type="button" role="tab" aria-selected="false" data-panel="sosi">SOSI-kartlag</button>
       </div>
       <p id="network-error" class="network-error" role="alert" hidden></p>
       <section class="network-panel" id="network-panel-devices" aria-label="Utstyr">
@@ -64,6 +65,17 @@
         <h3>Traséer og kabler</h3>
         <div id="network-route-list" class="network-object-list"></div>
       </section>
+      <section class="network-panel" id="network-panel-sosi" aria-label="SOSI-kartlag" hidden>
+        <h2>SOSI-kartlag</h2>
+        <p class="network-hint">Importer et SOSI-kartlag (.sos eller .sosi) direkte fra maskinen din. Importen viser geografiske objekter som et separat kartlag; den endrer ikke prosjektets adresser, traséer eller kabler.</p>
+        <label for="network-sosi-file">Velg SOSI-fil</label>
+        <input type="file" id="network-sosi-file" accept=".sos,.sosi,text/plain">
+        <button type="button" id="network-sosi-import" class="network-primary">Importer SOSI</button>
+        <p class="network-hint">Første versjon støtter EUREF89 UTM (SOSI KOORDSYS 19–26, blant annet 22/23/25) samt punkter, kurver og flater med enkle kurvereferanser. Ikke-støttede objekter telles og hoppes over. Maks 5 MB fil.</p>
+        <p id="network-sosi-status" class="network-selected-info" role="status" aria-live="polite">Ingen fil importert.</p>
+        <h3>Importerte kartlag</h3>
+        <div id="network-sosi-layers" class="network-object-list"></div>
+      </section>
     </aside>
     <section class="network-map-area" aria-label="Stort tegnekart">
       <div id="network-map" role="region" aria-label="Kart over prosjektets adresser, utstyr og føringsveier"></div>
@@ -73,6 +85,7 @@
     </section>
   </main>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
-  <script src="./network-editor.js?v=2" defer></script>
+  <script src="./sosi-reader.js?v=1" defer></script>
+  <script src="./network-editor.js?v=3" defer></script>
 </body>
 </html>

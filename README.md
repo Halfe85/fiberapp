@@ -91,3 +91,27 @@ The new frontend is available on GitHub Pages:
 - No backend, no authentication, and no server synchronization. Full live browser
   and Angular build validation still needed. The Angular app links into the same
   standalone address and building tools rather than duplicating the drawing logic.
+
+
+### SOSI map overlays (early support)
+
+The standalone network map now supports importing a local `.sos` or `.sosi`
+file from the **SOSI-kartlag** tab. Parsing takes place in the browser using
+`planner/sosi-reader.js`. An imported layer is saved separately per project
+under `fiberapp.planner.sosi.v1`, can be hidden, shown, zoomed to or deleted.
+
+Supported **subset**: EUREF89 UTM with SOSI `...KOORDSYS` 19–26 (including
+22/23/25), `...ORIGO-NØ`, `...ENHET`, SOSI `PUNKT`, `KURVE`, `LINJE`,
+and simple `FLATE` objects constructed from referenced curves. Topology
+variants requiring unsupported geometries (arcs, clothoids, complex nested
+surface references), unknown coordinate systems and malformed geometry
+are not converted. Skipped group counts are shown after import.
+
+A SOSI layer is **only a read-only, passive geographic reference layer**,
+not a routing network or an officially validated cadastral surface. It
+does not change projects, addresses, cables, or conduits. Browser localStorage
+limits apply (maximum 5 MB source text and a stricter 3 MB total SOSI
+storage limit). Older files with `DOSN8` encoding may show incorrectly
+decoded special characters.
+
+No backend and no GitHub Actions are used.

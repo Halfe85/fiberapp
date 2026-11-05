@@ -6,6 +6,7 @@
   const STORE=PREFIX+'network.v1';
   const ITEMS=PREFIX+'items.v1';
   const PROJECTS=PREFIX+'projects.v1';
+  const SOSI_KEY=PREFIX+'sosi.v1';
   const TILE='https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png';
   const L=window.L;
   const params=new URL(location.href).searchParams;
@@ -31,6 +32,7 @@
   let model=empty();
   let map=null;
   let addressLayer=null,devicesLayer=null,routesLayer=null,preview=null;
+  let sosiLayer=null,sosiData=[],sosiRendered=new Map();
   let mode='browse',tab='devices',points=[],selectedAddressId='',selectedRouteId='';
   let drawingKind='underground',drawingTube='Uspesifisert';
   let counter=0;
@@ -68,6 +70,165 @@
       error.hidden=false;
       return false;
     }
+  }
+
+  function readSosiStorage(){
+    const raw=localStorage.getItem(SOSI_KEY);
+    const value=raw?JSON.parse(raw):{version:1,projects:{}};
+    if(!value || typeof value!=='object'||Array.isArray(value)||
+       !value.projects||typeof value.projects!=='object'||Array.isArray(value.projects))
+      throw Error('Ugyldig lagring for SOSI-kartlag');
+    return value;
+  }
+  function saveSosiData(next){
+    try{
+      const store=readSosiStorage();
+      store.projects[projectId]=next;
+      const json=JSON.stringify(store);
+      if(json.length>3_000_000)
+        throw Error('SOSI-kartlagene er for store for nettleserlagring.');
+      localStorage.setItem(SOSI_KEY,json);
+      sosiData=next;
+      error.hidden=true;
+      renderSosi();
+      return true;
+    }catch(err){
+      sosiMessage(err instanceof Error?err.message:
+        'Kunne ikke lagre SOSI-kartlaget. Eksisterende kartlag er bevart.',true);
+      return false;
+    }
+  }
+  function sosiMessage(message,isError=false){
+    const element=el('network-sosi-status');
+    element.textContent=message;
+    element.classList.toggle('is-error',isError);
+  }
+  function renderSosi(){
+    if(!sosiLayer)return;
+    sosiLayer.clearLayers();
+    sosiRendered.clear();
+    const list=el('network-sosi-layers');
+    list.replaceChildren();
+    if(!sosiData.length)list.textContent='Ingen kartlag importert.';
+    for(const record of sosiData){
+      const row=document.createElement('div');
+      row.className='sosi-layer-row';
+      const checkbox=document.createElement('input');
+      checkbox.type='checkbox';
+      checkbox.checked=record.visible!==false;
+      checkbox.setAttribute('aria-label','Vis SOSI-kartlag: '+record.filename);
+      checkbox.addEventListener('change',()=>{
+        const next=sosiData.map(layer=>layer.id===record.id
+          ?{...layer,visible:checkbox.checked}:layer);
+        saveSosiData(next);
+      });
+      const name=document.createElement('span');
+      name.className='sosi-layer-name';
+      name.textContent=record.filename;
+      const meta=document.createElement('small');
+      const counts=record.meta?.counts||{};
+      meta.textContent='EPSG:'+record.meta.epsg+' · '+(counts.points||0)+' punkt · '+
+        (counts.lines||0)+' linjer · '+(counts.polygons||0)+' flater';
+      const zoom=document.createElement('button');
+      zoom.type='button';zoom.className='network-secondary';zoom.textContent='Zoom';
+      zoom.addEventListener('click',()=>{
+        const layer=sosiRendered.get(record.id);
+        if(!layer || !layer.getBounds?.().isValid()){
+          sosiMessage('Vis kartlaget før du zoomer til det.',true);return;
+        }
+        map.fitBounds(layer.getBounds(),{padding:[40,40],maxZoom:18});
+      });
+      const remove=document.createElement('button');
+      remove.type='button';remove.className='sosi-layer-remove';remove.textContent='×';
+      remove.title='Fjern SOSI-kartlag';
+      remove.setAttribute('aria-label','Fjern SOSI-kartlag: '+record.filename);
+      remove.addEventListener('click',()=>{
+        if(!window.confirm('Fjerne SOSI-kartlaget «'+record.filename+'» fra dette prosjektet?'))return;
+        const next=sosiData.filter(layer=>layer.id!==record.id);
+        if(saveSosiData(next))sosiMessage('Kartlaget ble fjernet.');
+      });
+      const label=document.createElement('div');
+      label.className='sosi-layer-description';label.append(name,meta);
+      row.append(checkbox,label,zoom,remove);
+      list.append(row);
+      if(record.visible===false || !Array.isArray(record.features))continue;
+      try{
+        const geoJSON=L.geoJSON({type:'FeatureCollection',features:record.features},{
+          interactive:false,
+          style:{color:'#7644ad',weight:2,opacity:.82,
+            fillColor:'#a38acb',fillOpacity:.09},
+          pointToLayer:(_feature,latlng)=>L.circleMarker(latlng,{
+            radius:3,color:'#63399a',weight:1,fillColor:'#a68cda',
+            fillOpacity:.8,interactive:false
+          })
+        });
+        geoJSON.addTo(sosiLayer);
+        sosiRendered.set(record.id,geoJSON);
+      }catch{
+        sosiMessage('Et lagret SOSI-kartlag kunne ikke tegnes.',true);
+      }
+    }
+  }
+  async function importSosi(){
+    const file=el('network-sosi-file').files?.[0];
+    if(!file){sosiMessage('Velg en SOSI-fil først.',true);return}
+    if(!/\.(sos|sosi)$/i.test(file.name)){
+      sosiMessage('Velg en fil med endelsen .sos eller .sosi.',true);return;
+    }
+    if(file.size>5_000_000){
+      sosiMessage('Filen er for stor. Maksimal filstørrelse er 5 MB.',true);return;
+    }
+    if(!window.FiberSosi?.parse){
+      sosiMessage('SOSI-leseren kunne ikke lastes.',true);return;
+    }
+    const button=el('network-sosi-import');
+    button.disabled=true;
+    sosiMessage('Leser og konverterer SOSI-filen …');
+    try{
+      const bytes=await file.arrayBuffer();
+      const raw=new Uint8Array(bytes);
+      let text='',encodingNote='';
+      // SOSI headers are ASCII compatible. Choose a decoder from TEGNSETT.
+      const header=new TextDecoder('windows-1252').decode(raw.slice(0,2400));
+      const charset=/^\s*\.\.TEGNSETT\s+(\S+)/mi.exec(header)?.[1]?.toUpperCase()||'';
+      const labels={
+        'UTF-8':'utf-8','UTF8':'utf-8','ISO8859-1':'iso-8859-1',
+        'ISO-8859-1':'iso-8859-1','ISO8859-10':'iso-8859-10',
+        'ISO-8859-10':'iso-8859-10','ANSI':'windows-1252'
+      };
+      let charsetName=labels[charset]||'';
+      if(!charsetName){
+        // For older DOSN8 and unlabelled data, decode ASCII geometry with
+        // a best effort. Non-ASCII feature names might be misdecoded.
+        try{new TextDecoder('utf-8',{fatal:true}).decode(raw);
+          charsetName='utf-8';}
+        catch{charsetName='windows-1252'}
+        if(charset && charset!=='UTF-8')encodingNote=' Tegnsett '+charset+
+          ' er ikke fullstendig støttet; spesialtegn kan være feil.';
+      }
+      try{text=new TextDecoder(charsetName,{fatal:charsetName==='utf-8'}).decode(raw)}
+      catch{
+        sosiMessage('Kunne ikke lese filens tegnsett ('+charsetName+').',true);
+        return;
+      }
+      const converted=window.FiberSosi.parse(text);
+      const name=file.name.slice(0,120);
+      const record={id:uid('sosi'),filename:name,visible:true,
+        importedAt:new Date().toISOString(),
+        meta:converted.meta,features:converted.features};
+      const next=[...sosiData,record];
+      if(!saveSosiData(next))return;
+      el('network-sosi-file').value='';
+      const n=converted.features.length;
+      sosiMessage('Importerte '+n+' kartobjekter fra '+name+'. '+
+        converted.meta.skipped+' grupper ble hoppet over.'+encodingNote);
+      const rendered=sosiRendered.get(record.id);
+      if(rendered?.getBounds?.().isValid())
+        map.fitBounds(rendered.getBounds(),{padding:[45,45],maxZoom:18});
+    }catch(err){
+      sosiMessage(err instanceof Error?err.message:
+        'Kunne ikke lese SOSI-filen.',true);
+    }finally{button.disabled=false}
   }
   function uid(prefix){
     counter++;
@@ -343,12 +504,20 @@
       attribution:'&copy; <a href="https://www.kartverket.no/" target="_blank" rel="noopener noreferrer">Kartverket</a>',
       minZoom:3,maxZoom:20,maxNativeZoom:18
     }).addTo(map);
+    sosiLayer=L.layerGroup().addTo(map);
     addressLayer=L.layerGroup().addTo(map);
     routesLayer=L.layerGroup().addTo(map);
     devicesLayer=L.layerGroup().addTo(map);
     map.setView([63,11],5);
     map.on('click',onMapClick);
     render();
+    try{
+      const loaded=readSosiStorage().projects[projectId];
+      sosiData=Array.isArray(loaded)?loaded:[];
+      renderSosi();
+    }catch{
+      sosiMessage('Kunne ikke lese lagrede SOSI-kartlag. Eksisterende lagring er ikke overskrevet.',true);
+    }
     zoomAll();
     el('network-zoom-all').addEventListener('click',zoomAll);
     document.querySelectorAll('[data-panel]').forEach(button=>button.addEventListener('click',()=>{
@@ -357,7 +526,7 @@
         b.classList.toggle('is-active',b===button);
         b.setAttribute('aria-selected',String(b===button));
       });
-      for(const type of ['devices','routes'])
+      for(const type of ['devices','routes','sosi'])
         el('network-panel-'+type).hidden=type!==tab;
       map.invalidateSize();
     }));
@@ -378,6 +547,7 @@
       finishMode();feedback('Tegningen er avbrutt.');
     });
     el('network-add-cable').addEventListener('click',addCable);
+    el('network-sosi-import').addEventListener('click',()=>void importSosi());
     document.addEventListener('keydown',e=>{
       if(e.key==='Escape'&&mode!=='browse'){finishMode();feedback('Verktøy avbrutt.')}
     });
