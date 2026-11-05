@@ -933,3 +933,12 @@ app-planner .network-editor-entry .network-editor-link{
 }
 app-planner .network-editor-entry .network-editor-link:hover,
 app-planner .network-editor-entry .network-editor-link:focus-visible{background:#155685}
+
+app-project-items .planner-address-building-link{
+  display:inline-flex;align-items:center;justify-content:center;
+  position:relative;z-index:2;margin:7px 52px 8px 10px;
+  padding:7px 11px;background:#e5f2fb;color:#135d8f;border-radius:7px;
+  font-size:12px;font-weight:750;text-decoration:none
+}
+app-project-items .planner-address-building-link:hover,
+app-project-items .planner-address-building-link:focus-visible{background:#cfe5f5}

@@ -58,6 +58,14 @@ export class AppComponent {
  }
  chooseProjectAction(kind:'address'|'equipment'):void{
    this.projectMenuOpen=false;
+   if(kind==='address'){
+     const projectId=this.router.parseUrl(this.router.url).queryParams['project'];
+     if(typeof projectId==='string' && projectId){
+       window.location.assign(new URL('planner/add-address.html?project='+
+         encodeURIComponent(projectId),document.baseURI).href);
+     }
+     return;
+   }
    this.plannerUi.openItem(kind);
  }
  backToPlannerProjects():void{

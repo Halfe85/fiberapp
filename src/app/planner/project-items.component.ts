@@ -2,7 +2,7 @@ import {CommonModule} from '@angular/common';
 import {Component,ElementRef,HostListener,Input,OnChanges,OnDestroy,OnInit,SimpleChanges,ViewChild} from '@angular/core';
 import {FormsModule} from '@angular/forms';
 import {PlannerUiService} from './planner-ui.service';
-import {AddressAreaMapComponent,SelectedArea} from './address-area-map.component';
+import {SelectedArea} from './address-area-map.component';
 
 type ItemKind='address'|'equipment';
 interface ProjectItem {
@@ -66,7 +66,7 @@ const ADDRESS_API='https://api.kartverket.no/adresser/v1/sok';
 @Component({
   selector:'app-project-items',
   standalone:true,
-  imports:[CommonModule,FormsModule,AddressAreaMapComponent],
+  imports:[CommonModule,FormsModule],
   template:`
     <div class="planner-item-groups">
       <section class="planner-item-section planner-address-section" aria-label="Adresser">
@@ -94,6 +94,9 @@ const ADDRESS_API='https://api.kartverket.no/adresser/v1/sok';
                 {{item.boenheter?.length}} valgte bruksenheter
               </span>
             </button>
+            <a class="planner-address-building-link" [href]="buildingUrl(item)">
+              2D byggvisning
+            </a>
             <button type="button" class="planner-address-edit-tool"
                     [attr.aria-label]="'Rediger adresse: '+item.name"
                     title="Rediger adresse" (click)="openAddressEditor(item,$event)">
@@ -253,10 +256,8 @@ const ADDRESS_API='https://api.kartverket.no/adresser/v1/sok';
           <textarea id="ng-item-note" name="itemNote" rows="3" maxlength="300"
                     [(ngModel)]="note"></textarea>
             </div>
-            <app-address-area-map *ngIf="ui.itemModal()==='address'"
-              [address]="selectedAddress"
-              (areaChanged)="onAreaChanged($event)"
-              (pendingChange)="drawingPending=$event"></app-address-area-map>
+            <!-- New address workflow has its own map page. Legacy address modal
+                 remains for saved projects but no longer offers polygon drawing. -->
           </div>
           <div class="notice error" *ngIf="modalError" role="alert">{{modalError}}</div>
           <div class="dialog-actions">
@@ -426,6 +427,10 @@ export class ProjectItemsComponent implements OnInit,OnChanges,OnDestroy {
     return this.items.filter(i=>i.projectId===this.projectId && i.kind==='equipment');
   }
   trackId(_index:number,item:ProjectItem):string{return item.id;}
+  buildingUrl(item:ProjectItem):string {
+    return new URL('planner/building.html?project='+encodeURIComponent(item.projectId)+
+      '&address='+encodeURIComponent(item.id),document.baseURI).href;
+  }
   hasAddressLocation(item:ProjectItem):boolean {
     return item.kind==='address' &&
       Number.isFinite(item.latitude) && Number.isFinite(item.longitude) &&

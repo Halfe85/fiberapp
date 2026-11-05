@@ -516,6 +516,14 @@
         }
         article.append(content);
         if (kind === 'address') {
+          const elevation=document.createElement('a');
+          elevation.className='project-item-building-link';
+          elevation.textContent='2D byggvisning';
+          elevation.href='./building.html?project='+encodeURIComponent(item.projectId)+
+            '&address='+encodeURIComponent(item.id);
+          article.append(elevation);
+        }
+        if (kind === 'address') {
           const tool = document.createElement('button');
           tool.type = 'button';
           tool.className = 'project-item-tool';
@@ -663,7 +671,11 @@
       editOpenedByPointer=false;
     });
   }
-  document.getElementById('add-address').addEventListener('click', () => openModal('address'));
+  document.getElementById('add-address').addEventListener('click', () => {
+    const projectId=selectedProject();
+    if(!projectId)return;
+    location.assign('./add-address.html?project='+encodeURIComponent(projectId));
+  });
   document.getElementById('add-equipment').addEventListener('click', () => openModal('equipment'));
   addressQuery.addEventListener('input', onAddressInput);
   window.addEventListener('fiberapp:planner-address-area-pending',event=>{

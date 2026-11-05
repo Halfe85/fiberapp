@@ -575,3 +575,13 @@
   text-decoration:none}
 .network-editor-entry .network-editor-link:hover,
 .network-editor-entry .network-editor-link:focus-visible{background:#155685}
+
+/* Entry from each address directly into its logical floor-by-floor 2D view. */
+.project-item-address > .project-item-building-link{
+  display:inline-flex;align-items:center;justify-content:center;
+  position:relative;z-index:2;margin:7px 52px 8px 10px;
+  padding:7px 11px;background:#e5f2fb;color:#135d8f;border-radius:7px;
+  font-size:12px;font-weight:750;text-decoration:none
+}
+.project-item-address > .project-item-building-link:hover,
+.project-item-address > .project-item-building-link:focus-visible{background:#cfe5f5}

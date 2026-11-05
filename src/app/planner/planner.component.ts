@@ -80,7 +80,7 @@ const STORAGE_KEY='fiberapp.planner.projects.v1';
         <app-project-map [projectId]="current.id" [postcode]="current.postcode || ''"></app-project-map>
         <div class="project-map-lower network-editor-entry">
           <h3>Nettverkskart</h3>
-          <p>Plasser utstyr, tegn luft- og rørtraséer, og planlegg rom, skap og paneler.</p>
+          <p>Tegn luft- og rørtraséer og plasser utstyr. Leilighetenes tilkoblinger planlegges i 2D-byggvisningen.</p>
           <a class="network-editor-link" [href]="networkEditorUrl(current.id)">
             Åpne stort kart
           </a>
