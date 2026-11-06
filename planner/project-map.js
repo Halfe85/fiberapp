@@ -214,7 +214,7 @@
     const token=clickGeneration;
     const controller=new AbortController();
     clickRequest=controller;
-    const popup=L.popup({autoPan:true,closeButton:true,offset:[0,-7]})
+    const popup=L.popup({autoPan:true,closeButton:false,offset:[0,-7]})
       .setLatLng([point.lat,point.lng])
       .setContent(clickedPopupContent('Søker adresser …','Kartverket',point,null))
       .openOn(map);
