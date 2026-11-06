@@ -8,7 +8,8 @@
   const collator=new Intl.Collator('nb-NO',{numeric:true,sensitivity:'base'});
   const validCode=code=>/^[HKUL]\d{4}$/.test(code);
   const text=value=>value===null||value===undefined?'':String(value).trim();
-  const num=value=>Number.isFinite(Number(value))?Number(value):null;
+  const num=value=>value===null||value===undefined||String(value).trim()==='' ? null :
+    (Number.isFinite(Number(value))?Number(value):null);
 
   function normalizeAddress(raw){
     if(!raw || typeof raw!=='object')return null;
