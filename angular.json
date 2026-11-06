@@ -21,13 +21,7 @@
             "styles": [
               "src/styles.css"
             ],
-            "assets": [
-              {
-                "glob": "sqlite3.wasm",
-                "input": "node_modules/@sqlite.org/sqlite-wasm/dist",
-                "output": "/assets"
-              }
-            ]
+            "assets": []
           },
           "configurations": {
             "production": {
