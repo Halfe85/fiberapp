@@ -1,0 +1,35 @@
+/* Fiber Planner: read-only grouped address/unit lookup modal */
+.sau-modal{border:1px solid #d3e2ee;border-radius:15px;padding:0;
+  color:#19364e;background:#fff;width:min(980px,calc(100vw - 24px));
+  max-width:980px;max-height:min(85dvh,900px);box-shadow:0 20px 64px #14273d61}
+.sau-modal::backdrop{background:#0c2034a6}
+.sau-head{display:flex;align-items:center;gap:16px;padding:18px 22px;
+  border-bottom:1px solid #d9e6ef;position:sticky;top:0;z-index:1;background:#fff}
+.sau-head h2{margin:0;font-size:20px;flex:1;min-width:0;overflow-wrap:anywhere}
+.sau-close{width:42px;height:42px;flex:none;display:grid;place-items:center;
+  border:0;border-radius:10px;background:#eef4fa;font-size:26px;color:#315b76;cursor:pointer}
+.sau-close:hover{background:#dfeef9}
+.sau-body{padding:18px 22px 24px}
+.sau-status{font-size:13px;color:#41657d;background:#eef6fb;border:1px solid #d3e7f5;
+  margin:0 0 14px;padding:10px 13px;border-radius:9px;line-height:1.5}
+.sau-status.is-warning{background:#fff7e9;color:#806022;border-color:#f0d6a3}
+.sau-summary{font-size:13px;font-weight:750;color:#345b74;margin:8px 0 12px}
+.sau-table-wrap{max-height:55dvh;overflow:auto;border:1px solid #d5e3ef;border-radius:10px}
+.sau-table{width:100%;border-collapse:collapse;white-space:nowrap;font-size:13px}
+.sau-table th,.sau-table td{padding:12px 13px;text-align:left;border-bottom:1px solid #e0eaf1}
+.sau-table th{position:sticky;top:0;background:#eaf3fa;font-weight:800;color:#35556d;z-index:1}
+.sau-address-row{background:#fff}.sau-address-row:hover{background:#f5faff}
+.sau-address-cell{display:flex;align-items:center;gap:9px}
+.sau-expand{width:26px;height:26px;border:1px solid #97bfd8;border-radius:6px;
+  font-size:18px;line-height:1;flex:none;background:#e8f4fc;color:#176a9b;cursor:pointer}
+.sau-expand[aria-expanded=true]{background:#196da4;color:#fff}
+.sau-unit-row{background:#f4f9fd;color:#42657f}
+.sau-unit-indent{padding-left:34px!important;color:#648399;font-weight:600}
+.sau-footnote{font-size:12px;color:#6d8294;margin:13px 0 0;line-height:1.5}
+@media(max-width:650px){
+ .sau-head{padding:12px 13px}.sau-head h2{font-size:17px}
+ .sau-body{padding:12px}
+ .sau-table th,.sau-table td{padding:10px 8px}
+ .sau-table{font-size:12px}
+ .sau-unit-indent{padding-left:18px!important}
+}
