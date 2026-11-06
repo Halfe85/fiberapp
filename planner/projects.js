@@ -10,14 +10,6 @@
   const desc = document.getElementById('project-description');
   const list = document.getElementById('project-list');
   const count = document.getElementById('project-count');
-  const projectsView = document.querySelector('.projects-view');
-  const workspace = document.getElementById('project-workspace');
-  const workspaceTitle = document.getElementById('workspace-title');
-  const workspaceDescription = document.getElementById('workspace-description');
-  const networkEditorLink = document.getElementById('network-editor-link');
-  const backButton = document.getElementById('project-back');
-  const plannerHeader = document.querySelector('.planner-header');
-  const itemActions = document.getElementById('project-actions');
   const warning = document.getElementById('project-error');
   const formError = document.getElementById('project-form-error');
   const title = document.getElementById('project-dialog-title');
@@ -101,44 +93,6 @@
     dialog.showModal();
     input.focus();
   }
-  function showSelectedProject() {
-    const id = new URL(location.href).searchParams.get('project');
-    const selected = projects.find(p => p.id === id);
-    projectsView.hidden = Boolean(selected);
-    workspace.hidden = !selected;
-    button.hidden = Boolean(selected);
-    backButton.hidden = !selected;
-    itemActions.hidden = !selected;
-    plannerHeader.classList.toggle('project-open', Boolean(selected));
-    if(selected)closeTools();
-    window.dispatchEvent(new CustomEvent('fiberapp:planner-project-changed', {
-      detail: {projectId: selected ? selected.id : null}
-    }));
-    document.getElementById('main').setAttribute('aria-label', selected ? selected.name : 'Prosjekter');
-    document.title = selected ? selected.name + ' | Fiber Planner' : 'Fiber Planner | Fiberapp';
-    if (!selected) return;
-    workspaceTitle.textContent = selected.name;
-    if(networkEditorLink)
-      networkEditorLink.href='./network.html?project='+encodeURIComponent(selected.id);
-    workspaceDescription.textContent = selected.description || '';
-    workspaceDescription.hidden = !selected.description;
-  }
-  function openProject(id) {
-    if (!projects.some(p => p.id === id)) return;
-    const url = new URL(location.href);
-    url.searchParams.set('project', id);
-    history.pushState(null, '', url);
-    showSelectedProject();
-    document.getElementById('main').scrollTop = 0;
-    workspaceTitle.focus({preventScroll:true});
-  }
-  function backToProjects() {
-    const url = new URL(location.href);
-    url.searchParams.delete('project');
-    history.pushState(null, '', url);
-    showSelectedProject();
-    document.getElementById('main').scrollTop = 0;
-  }
   function projectRow(project) {
     const wrap = document.createElement('div');
     wrap.className = 'project-swipe';
@@ -169,16 +123,6 @@
 
     const row = document.createElement('article');
     row.className = 'project-row';
-    row.setAttribute('role', 'button');
-    row.setAttribute('tabindex', '0');
-    row.setAttribute('aria-label', 'Åpne prosjekt: ' + project.name);
-    row.addEventListener('click', () => openProject(project.id));
-    row.addEventListener('keydown', event => {
-      if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        openProject(project.id);
-      }
-    });
     const info = document.createElement('div');
     info.className = 'content';
     const name = document.createElement('strong');
@@ -214,9 +158,6 @@
     }
   }
   render();
-  showSelectedProject();
-  backButton.addEventListener('click', backToProjects);
-  window.addEventListener('popstate', showSelectedProject);
   button.addEventListener('click', () => {
     resetDeleteView();
     deleteOpen.hidden = true;
@@ -276,7 +217,6 @@
       localStorage.setItem(KEY, JSON.stringify(next));
       projects = next;
       render();
-      showSelectedProject();
       dialog.close();
       setError(warning, '');
     } catch {
@@ -316,7 +256,6 @@
       localStorage.setItem(KEY, JSON.stringify(next));
       projects = next;
       render();
-      showSelectedProject();
       dialog.close();
       setError(warning, '');
     } catch {
