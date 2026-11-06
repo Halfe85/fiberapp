@@ -2,38 +2,48 @@
 
 Fiberapp inneholder **Fiberfinder** og **Fiber Planner**.
 
-## Fiber Planner – prosjektoversikt
+## Fiber Planner
 
-Fiber Planner har nå bare prosjektlisten. Du kan opprette et prosjekt med navn,
-postnummer og valgfri beskrivelse. Prosjekter vises sortert etter opprettelsesdato.
-Verktøydøren helt til høyre åpner prosjektinnstillingene for redigering og sletting.
-På mobil lukkes døren automatisk etter tre sekunder.
+Prosjektlisten lar deg opprette og redigere prosjekter med navn og valgfri
+beskrivelse. **Postnummer er ikke påkrevd og er fjernet fra prosjektformen**.
+Eksisterende prosjekter fungerer fortsatt; det tidligere postnummerfeltet
+fjernes fra det aktuelle prosjektet når du redigerer og lagrer.
 
-Alt etter prosjektoversikten er fjernet fra frontend og kildekoden:
-prosjektdetaljer, adresser, boenheter, bygg-/tomtekart, 2D-byggvisninger,
-utstyr, kabler, rørtraséer, rom, skap, ODF og SOSI-import.
+Når du velger et prosjekt, åpnes et **fullskjerms prosjektkart**:
+`planner/map.html?project=<project-id>`. Kartet bruker Kartverkets WMTS,
+med et flytende søkefelt øverst til høyre. Søkefunksjonen bruker Kartverkets
+åpne Adresse REST-API, med opptil 40 treff og en resultatliste der maksimalt
+seks rader vises samtidig. Ved valg av adresse zoomes kartet til det
+offisielle adressepunktet og viser en rød kartnål med popup.
 
-Prosjektlisten lagres i nettleserens `localStorage` under
-`fiberapp.planner.projects.v1`. Ingen backend er i bruk.
+Prosjektinnstillingene åpnes fra verktøydøren på høyre side av
+prosjektraden. På mobil lukkes døren automatisk etter tre sekunder.
+Du kan fremdeles slette prosjekter med bekreftelse.
 
-**Det er ikke opprettet backup.** Eldre detaljdata som allerede finnes i
-nettleserens lokale lagring slettes ikke automatisk, men blir ikke brukt
-av den nye prosjektoversikten.
+Prosjekter lagres under `fiberapp.planner.projects.v1` i lokal
+`localStorage`. Søkeresultater og kartnålen lagres **ikke** som
+prosjektadresser i denne første versjonen; de er kun navigasjon på kartet.
+Ingen backend eller brukerkonto er opprettet.
+
+Kartet er en felles statisk frontend-modul for GitHub Pages og Angular.
+`angular.json` kopierer kartfilene som assets ved lokal Angular-kjøring
+og manuell produksjonsbygging.
 
 ## Utvikling
 
 Node.js 22.12+:
+
 ```bash
 npm install
 npm start
 ```
 
-`npm test` kjører gjenværende tester.
+`npm test` kjører tilgjengelige tester.
 
-Den statiske prosjektoversikten ligger på
-https://halfe85.github.io/fiberapp/planner/
+Offentlig Planner: https://halfe85.github.io/fiberapp/planner/
 
-## Publisering
+## Publisering uten GitHub Actions
 
-GitHub Pages publiseres fra `main`. Angular kan bygges manuelt med
-`npm run build:pages`. **Ingen GitHub Actions brukes.**
+Prosjektet bruker GitHub Pages fra `main`.
+Angular kan bygges manuelt med `npm run build:pages`.
+Ingen GitHub Actions-workflows benyttes.

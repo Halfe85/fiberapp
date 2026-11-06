@@ -134,4 +134,6 @@
   .project-swipe.open .project-door{transform:translateX(-100%)}
   .project-swipe.open .project-tool{pointer-events:auto}
 }
-.project-swipe .project-row{cursor:default}
+.project-swipe .project-row{cursor:pointer}
+.project-swipe .project-row:hover{background:#f4faff}
+.project-swipe .project-row:focus-visible{outline:3px solid #3284bf;outline-offset:-3px}

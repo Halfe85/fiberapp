@@ -13,7 +13,7 @@
     .planner-main{padding:0}
   </style>
   <link rel="stylesheet" href="../site-shell.css?v=mobile-tool-title-1">
-<link rel="stylesheet" href="./projects.css?v=25"></head>
+<link rel="stylesheet" href="./projects.css?v=26"></head>
 <body>
   <header class="site-header planner-header"><div class="site-shell"><div class="site-actions"><button class="menu-toggle header-icon" type="button" aria-label="Åpne meny" aria-controls="site-menu" aria-expanded="false" title="Meny"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button><a class="home-link header-icon" href="../" aria-label="Hjem" title="Hjem"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7"/><path d="M5 9v12h14V9"/><path d="M9 21v-8h6v8"/></svg></a></div><a class="site-brand" href="../" aria-label="FiberApp forside">FIBER<span>APP</span></a><nav class="site-menu" id="site-menu" aria-label="Verktøymeny" hidden><a href="../finder/">Fiberfinder</a><a href="../planner/" aria-current="page">Fiber Planner</a></nav><h1 class="site-page-title">Fiber Planner</h1><button class="planner-add header-icon" type="button" id="add-project" aria-label="Nytt prosjekt" title="Nytt prosjekt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></div></header>
   <main class="site-main planner-main" id="main" aria-label="Prosjekter">
@@ -29,9 +29,6 @@
     <div class="dialog-head"><h2 id="project-dialog-title">Nytt prosjekt</h2><button type="button" id="project-close" class="close-button" aria-label="Lukk">×</button></div>
     <label for="project-name">Prosjektnavn *</label>
     <input id="project-name" name="name" maxlength="80" type="text" required autocomplete="off" placeholder="F.eks. Solsiden borettslag">
-    <label for="project-postcode">Postnummer *</label>
-    <input id="project-postcode" name="postcode" type="text" inputmode="numeric" pattern="[0-9]{4}"
-           minlength="4" maxlength="4" autocomplete="postal-code" placeholder="F.eks. 1850" required>
     <label for="project-description">Beskrivelse (valgfritt)</label>
     <textarea id="project-description" name="description" maxlength="300" rows="3" placeholder="Kort beskrivelse av prosjektet"></textarea>
     <p id="project-form-error" class="project-error" role="alert" hidden></p>
@@ -50,6 +47,6 @@
   </form>
 </dialog>
 <script src="../site-menu.js" defer></script>
-<script src="./projects.js?v=12" defer></script>
+<script src="./projects.js?v=13" defer></script>
 </body>
 </html>

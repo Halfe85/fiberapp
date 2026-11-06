@@ -6,7 +6,6 @@
   const dialog = document.getElementById('project-dialog');
   const form = document.getElementById('project-form');
   const input = document.getElementById('project-name');
-  const postcodeInput = document.getElementById('project-postcode');
   const desc = document.getElementById('project-description');
   const list = document.getElementById('project-list');
   const count = document.getElementById('project-count');
@@ -86,12 +85,14 @@
     title.textContent = 'Prosjektinnstillinger';
     submit.textContent = 'Lagre endringer';
     input.value = project.name;
-    postcodeInput.value = project.postcode || '';
-    postcodeInput.required = false; // Legacy projects without postnummer remain editable.
     desc.value = project.description || '';
     setError(formError, '');
     dialog.showModal();
     input.focus();
+  }
+  function openProjectMap(id) {
+    if(!projects.some(project=>project.id===id))return;
+    location.assign('./map.html?project='+encodeURIComponent(id));
   }
   function projectRow(project) {
     const wrap = document.createElement('div');
@@ -123,6 +124,15 @@
 
     const row = document.createElement('article');
     row.className = 'project-row';
+    row.setAttribute('role','button');
+    row.setAttribute('tabindex','0');
+    row.setAttribute('aria-label','Åpne kart for '+project.name);
+    row.addEventListener('click',()=>openProjectMap(project.id));
+    row.addEventListener('keydown',event=>{
+      if(event.key==='Enter'||event.key===' '){
+        event.preventDefault();openProjectMap(project.id);
+      }
+    });
     const info = document.createElement('div');
     info.className = 'content';
     const name = document.createElement('strong');
@@ -162,7 +172,6 @@
     resetDeleteView();
     deleteOpen.hidden = true;
     editingId = null;
-    postcodeInput.required = true;
     title.textContent = 'Nytt prosjekt';
     submit.textContent = 'Opprett prosjekt';
     form.reset();
@@ -231,12 +240,6 @@
     if (!storageAvailable) return;
     const name = input.value.trim().replace(/\s+/g, ' ');
     const description = desc.value.trim();
-    const postcode = postcodeInput.value.trim();
-    if ((!editingId && !/^[0-9]{4}$/.test(postcode)) ||
-        (postcode && !/^[0-9]{4}$/.test(postcode))) {
-      setError(formError, 'Postnummer må bestå av nøyaktig fire siffer.');
-      return;
-    }
     if (!name || name.length > 80 || description.length > 300) {
       setError(formError, 'Prosjektnavn må ha 1–80 tegn; beskrivelse maks 300.');
       return;
@@ -250,8 +253,12 @@
     const id = typeof crypto.randomUUID === 'function' ? crypto.randomUUID()
       : 'project-' + Date.now() + '-' + Math.random().toString(36).slice(2);
     const next = editingId
-      ? projects.map(p => p.id === editingId ? {...p, name, description, postcode, updatedAt:now} : p)
-      : [{id, name, description, postcode, createdAt:now, updatedAt:now}, ...projects];
+      ? projects.map(p => {
+          if(p.id!==editingId)return p;
+          const {postcode: _legacy, ...withoutPostcode}=p;
+          return {...withoutPostcode,name,description,updatedAt:now};
+        })
+      : [{id,name,description,createdAt:now,updatedAt:now},...projects];
     try {
       localStorage.setItem(KEY, JSON.stringify(next));
       projects = next;

@@ -21,7 +21,23 @@
             "styles": [
               "src/styles.css"
             ],
-            "assets": []
+            "assets": [
+              {
+                "glob": "map.html",
+                "input": "planner",
+                "output": "/planner"
+              },
+              {
+                "glob": "project-map.css",
+                "input": "planner",
+                "output": "/planner"
+              },
+              {
+                "glob": "project-map.js",
+                "input": "planner",
+                "output": "/planner"
+              }
+            ]
           },
           "configurations": {
             "production": {
