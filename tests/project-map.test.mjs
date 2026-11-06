@@ -52,8 +52,10 @@ function setup(projectFound=true,results=()=>{
     addEventListener(){},
     activeElement:null
   };
-  const tiles=[],moves=[],markers=[],removed=[];
+  const tiles=[],moves=[],markers=[],removed=[],popups=[],modalOpens=[];
   const map={
+    events:{},
+    on(type,fn){this.events[type]=fn;return this},
     setView(){return this},
     flyTo(point,zoom){moves.push({point,zoom});return this},
     removeLayer(layer){removed.push(layer)}
@@ -62,6 +64,11 @@ function setup(projectFound=true,results=()=>{
     map:()=>map,
     tileLayer:url=>({addTo(){tiles.push(url);return this}}),
     divIcon:options=>options,
+    popup:()=>({
+      setLatLng(point){this.point=point;return this},
+      setContent(content){this.content=content;return this},
+      openOn(){popups.push(this);return this}
+    }),
     marker:(location,options)=>{
       const point={location,options,
         addTo(){markers.push(this);return this},
@@ -91,11 +98,14 @@ function setup(projectFound=true,results=()=>{
     return Promise.resolve(results(url,opts));
   };
   runInNewContext(source,{
-    document,window:{L:leaflet},location:{href:'https://host.test/planner/map.html?project=p'},
+    document,window:{L:leaflet,FiberSearchAddressUnitsModal:{
+      create:()=>({open:params=>{modalOpens.push(params)}})
+    }},location:{href:'https://host.test/planner/map.html?project=p'},
     localStorage,URL,URLSearchParams,AbortController,
     setTimeout,clearTimeout,fetch
   });
-  return {elements,tiles,moves,markers,removed,requests,nextTimer,queue,memory};
+  return {elements,tiles,moves,markers,removed,popups,modalOpens,map,
+    requests,nextTimer,queue,memory};
 }
 const response=(number=12)=>({
   adresser:Array.from({length:number},(_,i)=>({
@@ -134,7 +144,8 @@ test('search returns over six rows with dropdown; selecting eighth moves map and
   assert.equal(moves[0].zoom,18);
   assert.ok(Math.abs(moves[0].point[0]-59.507)<1e-8);
   assert.equal(markers.length,1);
-  assert.match(markers[0].options.icon.html,/fp-pin-shape/);
+  assert.match(markers[0].options.icon.html,/<svg viewBox="0 0 36 48"/);
+  assert.match(markers[0].options.icon.html,/<circle/);
   assert.equal(markers[0].popup.children[0].textContent,'Storgata 8');
   assert.equal(rows.hidden,true);
   assert.equal(query.value,'Storgata 8');
@@ -167,4 +178,39 @@ test('an old pending response cannot overwrite a newer address result',async()=>
   respondOld({ok:true,json:async()=>response(1)});
   await flush();
   assert.equal(env.elements['map-address-results'].children.length,2);
+});
+
+test('map click resolves nearest address and + opens read-only unit lookup',async()=>{
+  const env=setup(true,()=>({ok:true,json:async()=>response(2)}));
+  env.map.events.click({latlng:{lat:59.6,lng:11.4}});
+  await flush();
+  assert.equal(env.popups.length,1);
+  assert.equal(env.popups[0].content.children[0].textContent,'Storgata 1');
+  assert.match(env.requests[0].url,/punktsok/);
+  assert.match(env.requests[0].url,/radius=55/);
+  const plus=env.popups[0].content.children.at(-1);
+  assert.equal(plus.textContent,'+');
+  plus.trigger('click');
+  assert.equal(env.modalOpens.length,1);
+  assert.equal(env.modalOpens[0].lat,59.6);
+  assert.equal(env.modalOpens[0].lng,11.4);
+  assert.equal(env.modalOpens[0].address.title,'Storgata 1');
+});
+
+test('map clicks ignore out-of-order stale address lookup',async()=>{
+  let finishOld;
+  const env=setup(true,(url)=>{
+    if(url.includes('lat=59.6'))return new Promise(done=>{finishOld=done});
+    return {ok:true,json:async()=>response(2)};
+  });
+  env.map.events.click({latlng:{lat:59.6,lng:11.4}});
+  await flush();
+  env.map.events.click({latlng:{lat:59.9,lng:11.1}});
+  await flush();
+  const active=env.popups[1].content.children[0].textContent;
+  finishOld({ok:true,json:async()=>({adresser:[{adressetekst:'Gammel adresse',
+    representasjonspunkt:{lat:59.5,lon:11.3}}]})});
+  await flush();
+  assert.equal(env.popups[1].content.children[0].textContent,active);
+  assert.equal(env.popups[0].content.children[0].textContent,'Søker adresser …');
 });
