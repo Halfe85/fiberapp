@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="no">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f4f7fb">
+  <title>Prosjektkart | Fiber Planner</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="./project-map.css?v=1">
+</head>
+<body>
+  <header class="map-header">
+    <a class="map-back" href="./" aria-label="Tilbake til prosjektlisten">← Prosjekter</a>
+    <div class="map-heading">
+      <strong id="map-project-title">Prosjektkart</strong>
+      <span>Fiber Planner</span>
+    </div>
+  </header>
+  <main class="map-main" aria-label="Prosjektkart og adressesøk">
+    <div id="project-map" class="map-canvas" aria-label="Kartverket-kart" role="region"></div>
+    <section class="map-search" aria-label="Søk etter adresser">
+      <label class="visually-hidden" for="map-address-query">Søk etter adresse</label>
+      <div class="map-search-field">
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></svg>
+        <input id="map-address-query" type="search" autocomplete="off" spellcheck="false"
+               placeholder="Søk adresse i hele Norge"
+               aria-controls="map-address-results" aria-expanded="false"
+               aria-autocomplete="list" role="combobox">
+      </div>
+      <p id="map-search-status" class="map-search-status" role="status" aria-live="polite" hidden></p>
+      <ul id="map-address-results" class="map-address-results" aria-label="Adresseforslag" hidden></ul>
+    </section>
+    <p id="map-notice" class="map-notice" role="status" aria-live="polite">
+      Søk etter en adresse for å flytte kartet og sette en kartnål.
+    </p>
+  </main>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+  <script src="./project-map.js?v=1" defer></script>
+</body>
+</html>
