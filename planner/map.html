@@ -6,7 +6,8 @@
   <meta name="theme-color" content="#f4f7fb">
   <title>Prosjektkart | Fiber Planner</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="./project-map.css?v=1">
+  <link rel="stylesheet" href="./project-map.css?v=2">
+  <link rel="stylesheet" href="../src/components/modals/searchaddressunits-modal/searchaddressunits-modal.css?v=1">
 </head>
 <body>
   <header class="map-header">
@@ -34,7 +35,31 @@
       Søk etter en adresse for å flytte kartet og sette en kartnål.
     </p>
   </main>
+  <dialog id="searchaddressunits-modal" class="sau-modal" aria-labelledby="sau-title">
+    <div class="sau-head">
+      <h2 id="sau-title">Søk bruksenheter</h2>
+      <button id="sau-close" class="sau-close" type="button" aria-label="Lukk bruksenhetsoversikt">×</button>
+    </div>
+    <div class="sau-body">
+      <p id="sau-status" class="sau-status" role="status" aria-live="polite"></p>
+      <p id="sau-summary" class="sau-summary"></p>
+      <div id="sau-table-wrap" class="sau-table-wrap" hidden>
+        <table class="sau-table">
+          <thead><tr>
+            <th scope="col">Adresse</th>
+            <th scope="col">Nr.</th>
+            <th scope="col">Bokstav</th>
+            <th scope="col">Leilighetsnr.</th>
+            <th scope="col">Etasje</th>
+          </tr></thead>
+          <tbody id="sau-rows"></tbody>
+        </table>
+      </div>
+      <p class="sau-footnote">Viser registrerte bruksenhetsnumre fra Kartverket. Ingen eieropplysninger. Ingen enheter legges til i prosjektet på dette steget.</p>
+    </div>
+  </dialog>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
-  <script src="./project-map.js?v=1" defer></script>
+  <script src="../src/components/modals/searchaddressunits-modal/searchaddressunits-modal.js?v=1" defer></script>
+  <script src="./project-map.js?v=2" defer></script>
 </body>
 </html>

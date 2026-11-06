@@ -39,10 +39,16 @@
   }).addTo(map);
   const pinIcon=L.divIcon({
     className:'fp-address-pin',
-    html:'<span class="fp-pin-shape" aria-hidden="true"></span>',
-    iconSize:[31,40],iconAnchor:[15,38],popupAnchor:[0,-33]
+    html:'<svg viewBox="0 0 36 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'+
+      '<path d="M18 2C8.6 2 2 8.9 2 18c0 13.1 16 28 16 28s16-14.9 16-28C34 8.9 27.4 2 18 2Z" fill="#e7463c" stroke="#fff" stroke-width="2.5"/>'+
+      '<circle cx="18" cy="17" r="6.8" fill="#fff"/></svg>',
+    iconSize:[36,48],iconAnchor:[18,45],popupAnchor:[0,-42]
+  });
+  const unitModal=window.FiberSearchAddressUnitsModal?.create({
+    dialog:document.getElementById('searchaddressunits-modal')
   });
   let marker=null,controller=null,timeout=null,generation=0;
+  let clickRequest=null,clickGeneration=0;
   const setStatus=(message,isError=false)=>{
     status.textContent=message;status.hidden=!message;
     status.classList.toggle('is-error',isError);
@@ -170,6 +176,80 @@
       }
     }
   });
+
+  function cancelClickRequest(){
+    clickGeneration++;
+    clickRequest?.abort();
+    clickRequest=null;
+  }
+  function clickedPopupContent(heading,detail,point,address){
+    const content=document.createElement('div');
+    content.className='map-click-popup';
+    const title=document.createElement('strong');
+    title.textContent=heading;
+    content.append(title);
+    if(detail){
+      const caption=document.createElement('small');
+      caption.textContent=detail;
+      content.append(caption);
+    }
+    if(address && unitModal){
+      const add=document.createElement('button');
+      add.type='button';
+      add.className='map-popup-plus';
+      add.textContent='+';
+      add.title='Søk bruksenheter på denne eiendommen';
+      add.setAttribute('aria-label','Søk bruksenheter ved '+address.title);
+      add.addEventListener('click',event=>{
+        event.preventDefault();event.stopPropagation();
+        void unitModal.open({lat:point.lat,lng:point.lng,address});
+      });
+      content.append(add);
+    }
+    return content;
+  }
+  async function inspectPoint(point){
+    if(!point||!Number.isFinite(point.lat)||!Number.isFinite(point.lng))return;
+    cancelClickRequest();
+    const token=clickGeneration;
+    const controller=new AbortController();
+    clickRequest=controller;
+    const popup=L.popup({autoPan:true,closeButton:true,offset:[0,-7]})
+      .setLatLng([point.lat,point.lng])
+      .setContent(clickedPopupContent('Søker adresser …','Kartverket',point,null))
+      .openOn(map);
+    const params=new URLSearchParams({
+      lat:String(point.lat),lon:String(point.lng),radius:'55',
+      treffPerSide:'30',side:'0'
+    });
+    try{
+      const response=await fetch('https://api.kartverket.no/adresser/v1/punktsok?'+params.toString(),{
+        signal:controller.signal,headers:{Accept:'application/json'}
+      });
+      if(!response.ok)throw Error('HTTP '+response.status);
+      const data=await response.json();
+      if(token!==clickGeneration||controller.signal.aborted)return;
+      const addresses=(Array.isArray(data?.adresser)?data.adresser:[])
+        .map(cleanResult).filter(Boolean);
+      if(!addresses.length){
+        popup.setContent(clickedPopupContent(
+          'Ingen adresse funnet','Ingen registrerte adresser innen 55 meter.',point,null));
+        return;
+      }
+      const chosen=addresses[0]; // Kartverket's punktsok is ordered by distance.
+      popup.setContent(clickedPopupContent(chosen.title,chosen.postal+
+        (addresses.length>1?' · '+addresses.length+' adresser i nærheten':''),point,chosen));
+      notice.textContent='Nærmeste adresse ved klikkpunktet: '+chosen.title+
+        '. Trykk + i kartpopupen for å undersøke eiendommen.';
+    }catch(err){
+      if(token!==clickGeneration||controller.signal.aborted)return;
+      popup.setContent(clickedPopupContent('Oppslag mislyktes',
+        'Kunne ikke hente adresser fra Kartverket. Prøv et nytt kartklikk.',point,null));
+    }finally{
+      if(token===clickGeneration)clickRequest=null;
+    }
+  }
+  map.on('click',event=>void inspectPoint(event.latlng));
   document.addEventListener('pointerdown',event=>{
     if(!event.target.closest('.map-search')){
       showResults(false);

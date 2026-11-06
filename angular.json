@@ -36,6 +36,11 @@
                 "glob": "project-map.js",
                 "input": "planner",
                 "output": "/planner"
+              },
+              {
+                "glob": "**/*",
+                "input": "src/components/modals/searchaddressunits-modal",
+                "output": "/src/components/modals/searchaddressunits-modal"
               }
             ]
           },
