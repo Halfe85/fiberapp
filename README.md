@@ -97,3 +97,15 @@ linjeklikk en ny strekning.
 
 `angular.json` kopierer både verktøylinjen og eksisterende kartkomponenter
 til Angular-utbyggingen, slik at samme kode brukes lokalt og på GitHub Pages.
+
+## Egne kartoverlegg
+
+Karttegninger ligger i fire separate Leaflet-overlaylag under «Kartlag» i
+tegneverktøylinjen: **Skap**, **Kummer**, **Underground** (brune linjer) og
+**Aerial** (blå stiplede linjer). Skap/kummer og traséer er gruppert i
+visningskontrollen, men hvert lag kan vises/skjules separat.
+
+Å skjule et lag fjerner ikke tegningene fra prosjektet. Synligheten
+lagres for hvert prosjekt under `fiberapp.planner.maplayers.v1.<project-id>`
+i nettleserens `localStorage`. Når et tegneverktøy velges for et skjult
+lag, vises laget automatisk slik at nye tegninger er synlige.

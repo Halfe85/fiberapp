@@ -3,6 +3,8 @@
   'use strict';
 
   const STORAGE_PREFIX = 'fiberapp.planner.mapdrawings.v1.';
+  const OVERLAY_STORAGE_PREFIX = 'fiberapp.planner.maplayers.v1.';
+  const OVERLAY_TYPES = ['box', 'manhole', 'underground', 'aerial'];
   const POINT_TOOLS = new Set(['box', 'manhole']);
   const ROUTE_TOOLS = new Set(['underground', 'aerial']);
   const TOOLS = new Set(['inspect', ...POINT_TOOLS, ...ROUTE_TOOLS]);
@@ -63,7 +65,10 @@
   function create({map, L, projectId, container, onFeedback = () => {}}) {
     if (!map || !L || !projectId || !container) return null;
     const key = STORAGE_PREFIX + projectId;
-    const layer = L.layerGroup().addTo(map);
+    const overlayKey = OVERLAY_STORAGE_PREFIX + projectId;
+    const layers = Object.fromEntries(OVERLAY_TYPES.map(type => [type, L.layerGroup().addTo(map)]));
+    const visible = Object.fromEntries(OVERLAY_TYPES.map(type => [type, true]));
+    const overlayInputs = [...container.querySelectorAll('[data-map-overlay]')];
     const buttons = [...container.querySelectorAll('[data-map-tool]')];
     const finishButton = container.querySelector('[data-map-action="finish"]');
     const undoButton = container.querySelector('[data-map-action="undo"]');
@@ -81,13 +86,32 @@
       onFeedback('Lagrede karttegninger kunne ikke leses. Nye tegninger vises bare i denne økten til de lagres.');
     }
 
+    try {
+      const stored = localStorage.getItem(overlayKey);
+      if (stored !== null) {
+        const settings = JSON.parse(stored);
+        if (settings && settings.version === 1 && settings.visible &&
+            typeof settings.visible === 'object') {
+          for (const type of OVERLAY_TYPES) {
+            if (typeof settings.visible[type] === 'boolean') visible[type] = settings.visible[type];
+          }
+        }
+      }
+    } catch {
+      // Invalid visibility settings do not affect saved drawings.
+    }
+    for (const type of OVERLAY_TYPES) {
+      if (!visible[type]) map.removeLayer(layers[type]);
+    }
+
     const feedback = message => { onFeedback(message); };
     const makeId = () => 'draw-' + Date.now().toString(36) + '-' + (++nextId).toString(36);
     const vertexCount = () => features.reduce((total, feature) => total + feature.coords.length, 0);
 
     function render() {
-      layer.clearLayers();
+      for (const layer of Object.values(layers)) layer.clearLayers();
       for (const feature of features) {
+        const layer = layers[feature.type];
         if (POINT_TOOLS.has(feature.type)) {
           const icon = L.divIcon({
             className: 'fp-drawing-icon fp-drawing-icon--' + feature.type,
@@ -116,6 +140,29 @@
       }
     }
 
+    function persistVisibility() {
+      try {
+        localStorage.setItem(overlayKey, JSON.stringify({version: 1, visible}));
+      } catch {
+        feedback('Kartlagene kunne ikke lagres i nettleseren.');
+      }
+    }
+
+    function setOverlayVisible(type, enabled) {
+      if (!OVERLAY_TYPES.includes(type)) return;
+      const next = Boolean(enabled);
+      if (visible[type] === next) return;
+      visible[type] = next;
+      if (next) layers[type].addTo(map);
+      else map.removeLayer(layers[type]);
+      if (!next && mode === type) {
+        mode = 'inspect';
+        activeRouteIndex = null;
+      }
+      persistVisibility();
+      updateUi();
+    }
+
     function updateUi() {
       for (const button of buttons) {
         button.setAttribute('aria-pressed', String(button.getAttribute('data-map-tool') === mode));
@@ -123,6 +170,10 @@
       if (finishButton) finishButton.disabled = activeRouteIndex === null;
       if (undoButton) undoButton.disabled = history.length === 0;
       if (hint) hint.textContent = HINTS[mode];
+      for (const checkbox of overlayInputs) {
+        const type = checkbox.getAttribute('data-map-overlay');
+        if (OVERLAY_TYPES.includes(type)) checkbox.checked = visible[type];
+      }
       map.getContainer?.().classList.toggle('map-is-drawing', mode !== 'inspect');
     }
 
@@ -135,6 +186,7 @@
       if (!TOOLS.has(tool)) return;
       mode = mode === tool && tool !== 'inspect' ? 'inspect' : tool;
       activeRouteIndex = null; // Switching tools always starts a new route.
+      if (mode !== 'inspect' && !visible[mode]) setOverlayVisible(mode, true);
       updateUi();
       feedback(HINTS[mode]);
     }
@@ -200,6 +252,12 @@
       else if (action === 'undo') undo();
     }
 
+    function onOverlayChange(event) {
+      const checkbox = event.target.closest?.('input[data-map-overlay]');
+      if (!checkbox || !container.contains(checkbox)) return;
+      setOverlayVisible(checkbox.getAttribute('data-map-overlay'), checkbox.checked);
+    }
+
     function onKeydown(event) {
       if (event.key === 'Escape' && mode !== 'inspect') selectTool('inspect');
     }
@@ -207,18 +265,21 @@
     L.DomEvent?.disableClickPropagation(container);
     L.DomEvent?.disableScrollPropagation(container);
     container.addEventListener('click', onClick);
+    container.addEventListener('change', onOverlayChange);
     document.addEventListener('keydown', onKeydown);
     render();
     updateUi();
 
     return {
-      handleMapClick, selectTool, finishRoute, undo,
+      handleMapClick, selectTool, finishRoute, undo, setOverlayVisible,
       isDrawing: () => mode !== 'inspect',
       getFeatures: () => clone(features),
+      getOverlayVisibility: () => ({...visible}),
       destroy: () => {
         container.removeEventListener('click', onClick);
+        container.removeEventListener('change', onOverlayChange);
         document.removeEventListener('keydown', onKeydown);
-        layer.remove();
+        for (const layer of Object.values(layers)) map.removeLayer(layer);
         map.getContainer?.().classList.remove('map-is-drawing');
       }
     };

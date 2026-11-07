@@ -85,3 +85,20 @@
   .map-tools-grid button { height: 42px; }
   .map-tools button svg { width: 24px; height: 24px; }
 }
+
+/* Per-type Leaflet overlays; visibility only, never deletes project drawings. */
+.map-tools { max-height: calc(100% - 110px); overflow-y: auto; overscroll-behavior: contain; }
+.map-overlays { margin-top: 11px; padding-top: 10px; border-top: 1px solid #dce7ef; }
+.map-overlays-title { margin: 0 0 8px; font-size: 12px; font-weight: 800; }
+.map-overlays fieldset { border: 0; margin: 0 0 9px; padding: 0; min-width: 0; }
+.map-overlays legend { margin-bottom: 4px; font-size: 11px; font-weight: 750; color: #5d7588; }
+.map-overlay-option { display: flex; align-items: center; gap: 7px; min-height: 26px; cursor: pointer; font-size: 12px; }
+.map-overlay-option input { margin: 0; width: 15px; height: 15px; accent-color: #206fa7; cursor: pointer; }
+.map-overlay-symbol { flex: none; width: 14px; height: 14px; display: inline-block; border: 2px solid #254c64; border-radius: 3px; }
+.map-overlay-symbol--manhole { border-radius: 50%; }
+.map-overlay-symbol--underground { border: 0; border-radius: 0; height: 0; border-top: 3px solid #885323; }
+.map-overlay-symbol--aerial { border: 0; border-radius: 0; height: 0; border-top: 3px dotted #1678cd; }
+.map-overlays-note { margin: 0; color: #627f93; font-size: 10px; line-height: 1.35; }
+@media (max-width: 680px) {
+  .map-tools { max-height: calc(100% - 92px); }
+}
