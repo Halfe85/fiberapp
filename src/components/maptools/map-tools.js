@@ -62,13 +62,19 @@
     }));
   }
 
-  function create({map, L, projectId, container, onFeedback = () => {}}) {
+  function create({map, L, projectId, container, overlayContainer = container, onFeedback = () => {}}) {
     if (!map || !L || !projectId || !container) return null;
     const key = STORAGE_PREFIX + projectId;
     const overlayKey = OVERLAY_STORAGE_PREFIX + projectId;
     const layers = Object.fromEntries(OVERLAY_TYPES.map(type => [type, L.layerGroup().addTo(map)]));
     const visible = Object.fromEntries(OVERLAY_TYPES.map(type => [type, true]));
-    const overlayInputs = [...container.querySelectorAll('[data-map-overlay]')];
+    const overlayInputs = [...overlayContainer.querySelectorAll('[data-map-overlay]')];
+    const layerToggle = overlayContainer.querySelector('[data-map-layer-toggle]');
+    const layerPanel = overlayContainer.querySelector('.map-overlays');
+    const iconImage = overlayContainer.querySelector('.map-layer-icon-image');
+    const onIconError = () => { if (iconImage) iconImage.hidden = true; };
+    iconImage?.addEventListener('error', onIconError);
+    let layerPanelOpen = false;
     const buttons = [...container.querySelectorAll('[data-map-tool]')];
     const finishButton = container.querySelector('[data-map-action="finish"]');
     const undoButton = container.querySelector('[data-map-action="undo"]');
@@ -254,31 +260,61 @@
 
     function onOverlayChange(event) {
       const checkbox = event.target.closest?.('input[data-map-overlay]');
-      if (!checkbox || !container.contains(checkbox)) return;
+      if (!checkbox || !overlayContainer.contains(checkbox)) return;
       setOverlayVisible(checkbox.getAttribute('data-map-overlay'), checkbox.checked);
     }
 
+    function setLayerPanelOpen(open) {
+      layerPanelOpen = Boolean(open);
+      if (layerPanel) layerPanel.hidden = !layerPanelOpen;
+      layerToggle?.setAttribute('aria-expanded', String(layerPanelOpen));
+      layerToggle?.setAttribute('aria-label', layerPanelOpen ? 'Skjul kartlag' : 'Vis kartlag');
+    }
+
+    function onLayerClick(event) {
+      const toggle = event.target.closest?.('[data-map-layer-toggle]');
+      if (!toggle || !overlayContainer.contains(toggle)) return;
+      setLayerPanelOpen(!layerPanelOpen);
+    }
+
+    function onOutsidePointerDown(event) {
+      if (layerPanelOpen && !overlayContainer.contains(event.target)) setLayerPanelOpen(false);
+    }
+
     function onKeydown(event) {
-      if (event.key === 'Escape' && mode !== 'inspect') selectTool('inspect');
+      if (event.key !== 'Escape') return;
+      if (layerPanelOpen) setLayerPanelOpen(false);
+      else if (mode !== 'inspect') selectTool('inspect');
     }
 
     L.DomEvent?.disableClickPropagation(container);
     L.DomEvent?.disableScrollPropagation(container);
+    if (overlayContainer !== container) {
+      L.DomEvent?.disableClickPropagation(overlayContainer);
+      L.DomEvent?.disableScrollPropagation(overlayContainer);
+    }
     container.addEventListener('click', onClick);
-    container.addEventListener('change', onOverlayChange);
+    overlayContainer.addEventListener('click', onLayerClick);
+    overlayContainer.addEventListener('change', onOverlayChange);
     document.addEventListener('keydown', onKeydown);
+    document.addEventListener('pointerdown', onOutsidePointerDown);
     render();
     updateUi();
+    setLayerPanelOpen(false);
 
     return {
-      handleMapClick, selectTool, finishRoute, undo, setOverlayVisible,
+      handleMapClick, selectTool, finishRoute, undo, setOverlayVisible, setLayerPanelOpen,
+      isLayerPanelOpen: () => layerPanelOpen,
       isDrawing: () => mode !== 'inspect',
       getFeatures: () => clone(features),
       getOverlayVisibility: () => ({...visible}),
       destroy: () => {
         container.removeEventListener('click', onClick);
-        container.removeEventListener('change', onOverlayChange);
+        overlayContainer.removeEventListener('click', onLayerClick);
+        overlayContainer.removeEventListener('change', onOverlayChange);
+        iconImage?.removeEventListener('error', onIconError);
         document.removeEventListener('keydown', onKeydown);
+        document.removeEventListener('pointerdown', onOutsidePointerDown);
         for (const layer of Object.values(layers)) map.removeLayer(layer);
         map.getContainer?.().classList.remove('map-is-drawing');
       }

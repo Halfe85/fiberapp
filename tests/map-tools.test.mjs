@@ -21,24 +21,38 @@ function setup(projectId='p',storage=new Map()) {
     .map(name=>new Button('data-map-tool',name));
   const overlayInputs=['box','manhole','underground','aerial']
     .map(name=>Object.assign(new Button('data-map-overlay',name),{checked:true}));
+  const layerToggle=new Button('data-map-layer-toggle','');
+  const layerPanel={hidden:true};
+  const layerEvents=new Map();
+  const layerControl={
+    querySelectorAll:selector=>selector==='[data-map-overlay]'?overlayInputs:[],
+    querySelector:selector=>selector==='[data-map-layer-toggle]'?layerToggle:
+      selector==='.map-overlays'?layerPanel:null,
+    addEventListener:(event,handler)=>layerEvents.set(event,handler),
+    removeEventListener:event=>layerEvents.delete(event),
+    contains:target=>[layerToggle,layerPanel,...overlayInputs].includes(target),
+    clickToggle:()=>layerEvents.get('click')?.({
+      target:{closest:()=>layerToggle}
+    }),
+    change:(checkbox,checked)=>{
+      checkbox.checked=checked;
+      layerEvents.get('change')?.({target:{closest:()=>checkbox}});
+    }
+  };
   const finish=new Button('data-map-action','finish');
   const undo=new Button('data-map-action','undo');
   const hint={textContent:''};
   const events=new Map();
   const toolbar={
-    querySelectorAll:selector=>selector==='[data-map-overlay]'?overlayInputs:buttons,
+    querySelectorAll:()=>buttons,
     querySelector:selector=>selector.includes('"finish"')?finish:
       selector.includes('"undo"')?undo:hint,
     addEventListener:(event,handler)=>events.set(event,handler),
     removeEventListener:(event)=>events.delete(event),
-    contains:button=>[...buttons,finish,undo,...overlayInputs].includes(button),
+    contains:button=>[...buttons,finish,undo].includes(button),
     click:button=>events.get('click')?.({
       target:{closest:()=>button}
-    }),
-    change:(checkbox,checked)=>{
-      checkbox.checked=checked;
-      events.get('change')?.({target:{closest:()=>checkbox}});
-    }
+    })
   };
   const keyboard=new Map(),feedback=[];
   const document={
@@ -81,13 +95,14 @@ function setup(projectId='p',storage=new Map()) {
   const window={};
   runInNewContext(source,{window,document,localStorage});
   const api=window.FiberMapTools.create({
-    map,L,projectId,container:toolbar,
+    map,L,projectId,container:toolbar,overlayContainer:layerControl,
     onFeedback:message=>feedback.push(message)
   });
   const button=name=>buttons.find(item=>item.getAttribute('data-map-tool')===name);
   const click=(lat,lng)=>api.handleMapClick({lat,lng});
   const features=()=>JSON.parse(JSON.stringify(api.getFeatures()));
-  return {api,toolbar,button,click,features,storage,feedback,finish,undo,
+  return {api,toolbar,layerControl,layerToggle,layerPanel,button,click,features,storage,feedback,finish,undo,
+    outside:()=>keyboard.get('pointerdown')?.({target:{}}),
     get layers(){return groups.flatMap(group=>group.items)},
     get visibleLayers(){return groups.filter(group=>group.visible).flatMap(group=>group.items)},
     overlay:type=>overlayInputs.find(input=>input.getAttribute('data-map-overlay')===type),
@@ -182,8 +197,8 @@ test('each infrastructure and route overlay can hide independently without delet
   env.api.selectTool('underground'); env.click(59.3,10.3); env.click(59.4,10.4);
   env.api.selectTool('aerial'); env.click(59.5,10.5); env.click(59.6,10.6);
   assert.equal(env.visibleLayers.length,4);
-  env.toolbar.change(env.overlay('box'),false);
-  env.toolbar.change(env.overlay('underground'),false);
+  env.layerControl.change(env.overlay('box'),false);
+  env.layerControl.change(env.overlay('underground'),false);
   assert.equal(env.visibleLayers.length,2);
   assert.equal(env.features().length,4);
   assert.equal(env.overlay('box').checked,false);
@@ -195,8 +210,8 @@ test('each infrastructure and route overlay can hide independently without delet
 test('overlay visibility is restored per project and a hidden drawing tool reveals its overlay',()=>{
   const storage=new Map();
   const first=setup('first',storage);
-  first.toolbar.change(first.overlay('aerial'),false);
-  first.toolbar.change(first.overlay('box'),false);
+  first.layerControl.change(first.overlay('aerial'),false);
+  first.layerControl.change(first.overlay('box'),false);
   const reopened=setup('first',storage);
   assert.equal(reopened.api.getOverlayVisibility().aerial,false);
   assert.equal(reopened.api.getOverlayVisibility().box,false);
@@ -206,7 +221,29 @@ test('overlay visibility is restored per project and a hidden drawing tool revea
   assert.equal(reopened.api.getOverlayVisibility().aerial,true);
   assert.equal(reopened.overlay('aerial').checked,true);
   reopened.click(59.9,10.7);
-  reopened.toolbar.change(reopened.overlay('aerial'),false);
+  reopened.layerControl.change(reopened.overlay('aerial'),false);
   assert.equal(reopened.api.isDrawing(),false);
   assert.equal(reopened.features().length,1);
+});
+
+test('bottom-right layer icon opens and closes its independent overlay panel',()=>{
+  const env=setup();
+  assert.equal(env.layerPanel.hidden,true);
+  assert.equal(env.layerToggle.getAttribute('aria-expanded'),'false');
+  env.layerControl.clickToggle();
+  assert.equal(env.layerPanel.hidden,false);
+  assert.equal(env.api.isLayerPanelOpen(),true);
+  assert.equal(env.layerToggle.getAttribute('aria-expanded'),'true');
+  env.layerControl.change(env.overlay('manhole'),false);
+  assert.equal(env.api.getOverlayVisibility().manhole,false);
+  assert.equal(env.api.isLayerPanelOpen(),true);
+  env.outside();
+  assert.equal(env.layerPanel.hidden,true);
+  assert.equal(env.layerToggle.getAttribute('aria-expanded'),'false');
+  env.layerControl.clickToggle();
+  env.escape();
+  assert.equal(env.layerPanel.hidden,true);
+  env.layerControl.clickToggle();
+  env.layerControl.clickToggle();
+  assert.equal(env.layerPanel.hidden,true);
 });

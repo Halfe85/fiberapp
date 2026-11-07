@@ -48,7 +48,7 @@
     dialog:document.getElementById('searchaddressunits-modal')
   });
   const drawingTools=window.FiberMapTools?.create({
-    map,L,projectId,container:el('map-tools'),
+    map,L,projectId,container:el('map-tools'),overlayContainer:el('map-layer-control'),
     onFeedback:message=>{notice.textContent=message;}
   });
   let marker=null,controller=null,timeout=null,generation=0;

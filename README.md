@@ -100,8 +100,8 @@ til Angular-utbyggingen, slik at samme kode brukes lokalt og på GitHub Pages.
 
 ## Egne kartoverlegg
 
-Karttegninger ligger i fire separate Leaflet-overlaylag under «Kartlag» i
-tegneverktøylinjen: **Skap**, **Kummer**, **Underground** (brune linjer) og
+Karttegninger ligger i fire separate Leaflet-overlaylag i et eget flytende
+kartlagspanel nederst til høyre på prosjektkartet (med lagikon): **Skap**, **Kummer**, **Underground** (brune linjer) og
 **Aerial** (blå stiplede linjer). Skap/kummer og traséer er gruppert i
 visningskontrollen, men hvert lag kan vises/skjules separat.
 
