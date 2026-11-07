@@ -75,7 +75,7 @@ tidligere CSS-roterte figuren.
 ## Tegneverktøy på prosjektkartet
 
 Den flytende verktøylinjen til venstre på prosjektkartet ligger i
-`src/components/map-tools/`. Den støtter:
+`src/components/maptools/`. Den støtter:
 
 - **Velg / undersøk:** vanlig kartklikk søker nærmeste adresse og kan åpne
   bruksenhetsoversikten.

@@ -44,8 +44,8 @@
               },
               {
                 "glob": "**/*",
-                "input": "src/components/map-tools",
-                "output": "/src/components/map-tools"
+                "input": "src/components/maptools",
+                "output": "/src/components/maptools"
               }
             ]
           },

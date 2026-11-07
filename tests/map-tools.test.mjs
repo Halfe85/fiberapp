@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
 
 const source=readFileSync(
-  new URL('../src/components/map-tools/map-tools.js',import.meta.url),'utf8'
+  new URL('../src/components/maptools/map-tools.js',import.meta.url),'utf8'
 );
 
 class Button {
