@@ -41,6 +41,11 @@
                 "glob": "**/*",
                 "input": "src/components/modals/searchaddressunits-modal",
                 "output": "/src/components/modals/searchaddressunits-modal"
+              },
+              {
+                "glob": "**/*",
+                "input": "src/components/map-tools",
+                "output": "/src/components/map-tools"
               }
             ]
           },

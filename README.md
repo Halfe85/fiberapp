@@ -71,3 +71,29 @@ Ingen eierdata hentes. Ingen adresser eller boenheter lagres i dette steget.
 
 Kartnålen fra tekstsøket er et symmetrisk rødt SVG-symbol, ikke den
 tidligere CSS-roterte figuren.
+
+## Tegneverktøy på prosjektkartet
+
+Den flytende verktøylinjen til venstre på prosjektkartet ligger i
+`src/components/map-tools/`. Den støtter:
+
+- **Velg / undersøk:** vanlig kartklikk søker nærmeste adresse og kan åpne
+  bruksenhetsoversikten.
+- **Skap / box:** plasser et skap-symbol ved hvert kartklikk.
+- **Kum / manhole:** plasser et kum-symbol ved hvert kartklikk.
+- **Underground:** tegn sammenhengende, brun heltrukken trasé; hvert klikk
+  legger til et punkt og forbinder det med forrige.
+- **Aerial:** tegn sammenhengende, blå stiplet lufttrasé på samme måte.
+- **Avslutt strekning:** neste klikk starter en ny trasé, også ved samme
+  aktive traséverktøy. Verktøybytte avslutter automatisk strekningen.
+- **Angre siste punkt:** reverserer siste tegnehandling i gjeldende økt.
+  `Escape` går tilbake til adresseoppslag.
+
+Tegningene lagres per prosjekt i nettleserens `localStorage` med nøkkelen
+`fiberapp.planner.mapdrawings.v1.<project-id>`. De lastes på nytt når kartet
+åpnes, men deles **ikke** mellom nettlesere eller brukere. Ingen backend,
+synkronisering eller eksport er lagt til. Etter omlasting starter et nytt
+linjeklikk en ny strekning.
+
+`angular.json` kopierer både verktøylinjen og eksisterende kartkomponenter
+til Angular-utbyggingen, slik at samme kode brukes lokalt og på GitHub Pages.

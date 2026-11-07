@@ -6,7 +6,8 @@
   <meta name="theme-color" content="#f4f7fb">
   <title>Prosjektkart | Fiber Planner</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="./project-map.css?v=2">
+  <link rel="stylesheet" href="./project-map.css?v=3">
+  <link rel="stylesheet" href="../src/components/map-tools/map-tools.css?v=1">
   <link rel="stylesheet" href="../src/components/modals/searchaddressunits-modal/searchaddressunits-modal.css?v=1">
 </head>
 <body>
@@ -19,6 +20,34 @@
   </header>
   <main class="map-main" aria-label="Prosjektkart og adressesøk">
     <div id="project-map" class="map-canvas" aria-label="Kartverket-kart" role="region"></div>
+
+    <aside id="map-tools" class="map-tools" aria-label="Kartverktøy">
+      <h2 class="map-tools-title">Tegneverktøy</h2>
+      <div class="map-tools-grid" role="toolbar" aria-label="Karttegning">
+        <button type="button" data-map-tool="inspect" aria-label="Velg / undersøk kart" aria-pressed="true" title="Velg / undersøk (Esc)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M4 3l16 9-7 1.5L9 21 4 3z"/></svg>
+        </button>
+        <button type="button" data-map-tool="box" aria-label="Plasser skap / box" aria-pressed="false" title="Plasser skap / box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M7 9h10M12 12v6"/></svg>
+        </button>
+        <button type="button" data-map-tool="manhole" aria-label="Plasser kum / manhole" aria-pressed="false" title="Plasser kum / manhole">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/></svg>
+        </button>
+        <button type="button" data-map-tool="underground" aria-label="Tegn kabeltrasé i bakken" aria-pressed="false" title="Underground route – brun heltrukken">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#885323" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20 10 10l6 4 5-10"/></svg>
+        </button>
+        <button type="button" data-map-tool="aerial" aria-label="Tegn luftstrekk" aria-pressed="false" title="Aerial route – blå stiplet">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#1678cd" stroke-width="3" stroke-dasharray="2 5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20 10 10l6 4 5-10"/></svg>
+        </button>
+        <button type="button" data-map-action="finish" aria-label="Avslutt aktiv strekning" title="Avslutt aktiv strekning" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V3m0 1h13l-3 5 3 5H5"/></svg>
+        </button>
+      </div>
+      <div class="map-tools-actions">
+        <button type="button" data-map-action="undo" disabled>↶ Angre siste punkt</button>
+      </div>
+      <p class="map-tools-hint" aria-live="polite">Klikk på kartet for adresseoppslag.</p>
+    </aside>
     <section class="map-search" aria-label="Søk etter adresser">
       <label class="visually-hidden" for="map-address-query">Søk etter adresse</label>
       <div class="map-search-field">
@@ -60,6 +89,7 @@
   </dialog>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
   <script src="../src/components/modals/searchaddressunits-modal/searchaddressunits-modal.js?v=1" defer></script>
-  <script src="./project-map.js?v=2" defer></script>
+  <script src="../src/components/map-tools/map-tools.js?v=1" defer></script>
+  <script src="./project-map.js?v=3" defer></script>
 </body>
 </html>
