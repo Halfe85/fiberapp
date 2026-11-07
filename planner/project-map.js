@@ -47,6 +47,10 @@
   const unitModal=window.FiberSearchAddressUnitsModal?.create({
     dialog:document.getElementById('searchaddressunits-modal')
   });
+  const drawingTools=window.FiberMapTools?.create({
+    map,L,projectId,container:el('map-tools'),
+    onFeedback:message=>{notice.textContent=message;}
+  });
   let marker=null,controller=null,timeout=null,generation=0;
   let clickRequest=null,clickGeneration=0;
   const setStatus=(message,isError=false)=>{
@@ -249,7 +253,14 @@
       if(token===clickGeneration)clickRequest=null;
     }
   }
-  map.on('click',event=>void inspectPoint(event.latlng));
+  map.on('click',event=>{
+    if(drawingTools?.handleMapClick(event.latlng)){
+      cancelClickRequest();
+      map.closePopup?.();
+      return;
+    }
+    void inspectPoint(event.latlng);
+  });
   document.addEventListener('pointerdown',event=>{
     if(!event.target.closest('.map-search')){
       showResults(false);
